@@ -1,27 +1,31 @@
 <img src="./.assets/christmas_ferris.png" width="164">
 
-# 🎄 Advent of Code {year}
+# 🎄 Advent of Code 2024
 
 Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.rust-lang.org/).
 
 <!--- advent_readme_stars table --->
+
 ## 2024 Results
 
-| Day | Part 1 | Part 2 |
-| :---: | :---: | :---: |
-| [Day 1](https://adventofcode.com/2024/day/1) | ⭐ | ⭐ |
-| [Day 2](https://adventofcode.com/2024/day/2) | ⭐ | ⭐ |
+|                     Day                      | Part 1 | Part 2 |
+| :------------------------------------------: | :----: | :----: |
+| [Day 1](https://adventofcode.com/2024/day/1) |   ⭐   |   ⭐   |
+| [Day 2](https://adventofcode.com/2024/day/2) |   ⭐   |   ⭐   |
+
 <!--- advent_readme_stars table --->
 
 <!--- benchmarking table --->
+
 ## Benchmarks
 
-| Day | Part 1 | Part 2 |
-| :---: | :---: | :---:  |
-| [Day 1](./src/bin/01.rs) | `60.6µs` | `65.2µs` |
+|           Day            |  Part 1   |  Part 2   |
+| :----------------------: | :-------: | :-------: |
+| [Day 1](./src/bin/01.rs) | `60.6µs`  | `65.2µs`  |
 | [Day 2](./src/bin/02.rs) | `158.3µs` | `253.3µs` |
 
 **Total: 0.54ms**
+
 <!--- benchmarking table --->
 
 ---
@@ -30,7 +34,7 @@ Solutions for [Advent of Code](https://adventofcode.com/) in [Rust](https://www.
 
 This template supports all major OS (macOS, Linux, Windows).
 
-###  📝 Create your repository
+### 📝 Create your repository
 
 1.  Open [the template repository](https://github.com/fspoettel/advent-of-code-rust) on Github.
 2.  Click [Use this template](https://github.com/fspoettel/advent-of-code-rust/generate) and create your repository.
@@ -72,7 +76,7 @@ Every [solution](https://github.com/fspoettel/advent-of-code-rust/blob/main/src/
 
 ### ➡️ Download input for a day
 
-> [!IMPORTANT] 
+> [!IMPORTANT]
 > This requires [installing the aoc-cli crate](#configure-aoc-cli-integration).
 
 You can automatically download puzzle input and description by either appending the `--download` flag to `scaffold` (e.g. `cargo scaffold 4 --download`) or with the separate `download` command:
@@ -151,9 +155,9 @@ The `cargo time` command allows you to benchmark your code and store timings in 
 
 `cargo time` has three modes of execution:
 
- 1. `cargo time` without arguments incrementally benches solutions that do not have been stored in the readme yet and skips the rest.
- 2. `cargo time <day>` benches a single solution.
- 3. `cargo time --all` benches all solutions.
+1.  `cargo time` without arguments incrementally benches solutions that do not have been stored in the readme yet and skips the rest.
+2.  `cargo time <day>` benches a single solution.
+3.  `cargo time --all` benches all solutions.
 
 By default, `cargo time` does not write to the readme. In order to do so, append the `--store` flag: `cargo time --store`.
 
@@ -189,9 +193,9 @@ cargo read <day>
 
 During december, the `today` shorthand command can be used to:
 
- - scaffold a solution for the current day
- - download its input
- - and read the puzzle
+-   scaffold a solution for the current day
+-   download its input
+-   and read the puzzle
 
 in one go.
 
@@ -309,7 +313,9 @@ Do you have aoc-specific crate recommendations? [Share them!](https://github.com
 ## Footnotes
 
 [^1]: The session cookie might expire after a while (~1 month) which causes the downloads to fail. To fix this issue, refresh the `.adventofcode.session` file.
+
 [^2]: The session cookie might expire after a while (~1 month) which causes the automated workflow to fail. To fix this issue, refresh the AOC_SESSION secret.
+
 [^3]:
     <img src="https://user-images.githubusercontent.com/1682504/198838369-453dc22c-c645-4803-afe0-fc50d5a3f00c.png" alt="Set a breakpoint" width="450" />
 
