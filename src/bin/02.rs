@@ -1,5 +1,3 @@
-use std::cmp;
-
 use nom::{
     character::complete::{space1, u32},
     multi::separated_list1,
@@ -13,7 +11,7 @@ pub fn parse_line(input: &str) -> IResult<&str, Vec<u32>> {
 }
 
 fn absolute_diff(num1: u32, num2: u32) -> u32 {
-    cmp::max(num1, num2) - cmp::min(num1, num2)
+    num1.abs_diff(num2)
 }
 
 fn is_difference_in_range(data: &[u32]) -> bool {
@@ -26,15 +24,15 @@ fn is_sorted<T>(data: &[T]) -> bool
 where
     T: Ord,
 {
-    is_sorted_for(data) || is_sorted_rev(data)
+    is_sorted_forward(data) || is_sorted_reverse(data)
 }
-fn is_sorted_for<T>(data: &[T]) -> bool
+fn is_sorted_forward<T>(data: &[T]) -> bool
 where
     T: Ord,
 {
     data.windows(2).all(|w| w[0] < w[1])
 }
-fn is_sorted_rev<T>(data: &[T]) -> bool
+fn is_sorted_reverse<T>(data: &[T]) -> bool
 where
     T: Ord,
 {
@@ -48,22 +46,13 @@ pub fn is_safe_with_dampening(vec: &[u32]) -> bool {
     if is_safe(vec) {
         return true;
     }
-    for index in 0..vec.len() {
+    (0..vec.len()).any(|index| {
         let l = slice_without_nth(vec, index);
-        if is_safe(&l) {
-            return true;
-        }
-    }
-
-    false
+        is_safe(&l)
+    })
 }
 
 fn slice_without_nth(vec: &[u32], n: usize) -> Vec<u32> {
-    let len = vec.len();
-    if n >= len {
-        panic!("Index out of bounds");
-    }
-
     let before = &vec[..n];
     let after = &vec[n + 1..];
 
@@ -71,15 +60,23 @@ fn slice_without_nth(vec: &[u32], n: usize) -> Vec<u32> {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let lines: Vec<Vec<u32>> = input.lines().map(|l| parse_line(l).unwrap().1).collect();
-
-    Some(lines.iter().filter(|l| is_safe(l)).count() as u32)
+    Some(
+        input
+            .lines()
+            .map(|l| parse_line(l).unwrap().1)
+            .filter(|l| is_safe(l))
+            .count() as u32,
+    )
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let lines: Vec<Vec<u32>> = input.lines().map(|l| parse_line(l).unwrap().1).collect();
-
-    Some(lines.iter().filter(|l| is_safe_with_dampening(l)).count() as u32)
+    Some(
+        input
+            .lines()
+            .map(|l| parse_line(l).unwrap().1)
+            .filter(|l| is_safe_with_dampening(l))
+            .count() as u32,
+    )
 }
 
 #[cfg(test)]
