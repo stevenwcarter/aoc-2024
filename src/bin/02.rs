@@ -26,6 +26,12 @@ fn is_sorted<T>(data: &[T]) -> bool
 where
     T: Ord,
 {
+    is_sorted_for(data) || is_sorted_rev(data)
+}
+fn is_sorted_for<T>(data: &[T]) -> bool
+where
+    T: Ord,
+{
     data.windows(2).all(|w| w[0] < w[1])
 }
 fn is_sorted_rev<T>(data: &[T]) -> bool
@@ -36,7 +42,7 @@ where
 }
 
 pub fn is_safe(vec: &[u32]) -> bool {
-    (is_sorted(vec) || is_sorted_rev(vec)) && is_difference_in_range(vec)
+    is_sorted(vec) && is_difference_in_range(vec)
 }
 pub fn is_safe_with_dampening(vec: &[u32]) -> bool {
     if is_safe(vec) {
@@ -58,11 +64,9 @@ fn slice_without_nth(vec: &[u32], n: usize) -> Vec<u32> {
         panic!("Index out of bounds");
     }
 
-    // Create two slices: one before and one after the nth element
     let before = &vec[..n];
     let after = &vec[n + 1..];
 
-    // Concatenate the two slices into a single slice
     [before, after].concat()
 }
 
