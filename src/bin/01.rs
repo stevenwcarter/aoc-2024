@@ -27,11 +27,7 @@ pub fn part_one(input: &str) -> Option<u32> {
             .map(|i| {
                 let a = a.get(i).unwrap();
                 let b = b.get(i).unwrap();
-                if a > b {
-                    a - b
-                } else {
-                    b - a
-                }
+                a.abs_diff(*b)
             })
             .sum(),
     )
@@ -48,19 +44,12 @@ pub fn part_two(input: &str) -> Option<u32> {
             }
         })
         .unzip();
-    let mut b_counts: HashMap<u32, u32> = HashMap::new();
+    let mut b_counts: HashMap<u32, u32> = HashMap::with_capacity(1000);
     for n in b {
         *b_counts.entry(n).or_insert(0) += 1;
     }
 
-    Some(
-        a.into_iter()
-            .map(|e| {
-                let b_frequency = *b_counts.entry(e).or_default();
-                e * b_frequency
-            })
-            .sum(),
-    )
+    Some(a.iter().map(|e| e * b_counts.get(e).unwrap_or(&0)).sum())
 }
 
 fn number_parser(input: &str) -> IResult<&str, u32> {
