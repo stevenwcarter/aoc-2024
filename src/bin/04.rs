@@ -1,6 +1,8 @@
 use rayon::prelude::*;
 advent_of_code::solution!(4);
 
+const WORD_CHARS: [char; 4] = ['X', 'M', 'A', 'S'];
+
 fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
     let directions = [
         (0, 1),
@@ -13,7 +15,6 @@ fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
         (-1, -1),
     ];
 
-    let word_chars: Vec<char> = "XMAS".chars().collect();
     let rows = grid.len();
     let cols = grid[0].len();
 
@@ -25,9 +26,7 @@ fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
                     if grid[r][c] == 'X' {
                         directions
                             .iter()
-                            .filter(|(dr, dc)| {
-                                check_word(grid, &word_chars, r as isize, c as isize, *dr, *dc)
-                            })
+                            .filter(|(dr, dc)| check_word(grid, r as isize, c as isize, *dr, *dc))
                             .count()
                     } else {
                         0
@@ -38,24 +37,20 @@ fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
         .sum()
 }
 
-fn check_word(
-    grid: &[Vec<char>],
-    word_chars: &[char],
-    mut r: isize,
-    mut c: isize,
-    dr: isize,
-    dc: isize,
-) -> bool {
-    r += dr;
-    c += dc;
-    if r + 3 * dr < 0
-        || r + 3 * dr >= grid.len() as isize
-        || c + 3 * dc < 0
-        || c + 3 * dc >= grid[0].len() as isize
+fn check_word(grid: &[Vec<char>], mut r: isize, mut c: isize, dr: isize, dc: isize) -> bool {
+    let offset_amount: isize = (WORD_CHARS.len()) as isize - 1;
+    let ddr = offset_amount * dr;
+    let ddc = offset_amount * dc;
+    if r + ddr < 0
+        || r + ddr >= grid.len() as isize
+        || c + ddc < 0
+        || c + ddc >= grid[0].len() as isize
     {
         return false;
     }
-    for &ch in &word_chars[1..] {
+    r += dr;
+    c += dc;
+    for &ch in &WORD_CHARS[1..] {
         if grid[r as usize][c as usize] != ch {
             return false;
         }
@@ -102,7 +97,8 @@ fn check_mas(grid: &[Vec<char>], r: usize, c: usize, dr: isize, dc: isize) -> bo
         && c2 >= 0
         && c2 < cols as isize
     {
-        grid[r1 as usize][c1 as usize] == 'M' && grid[r2 as usize][c2 as usize] == 'S'
+        (grid[r1 as usize][c1 as usize] == 'M' && grid[r2 as usize][c2 as usize] == 'S')
+            || (grid[r1 as usize][c1 as usize] == 'S' && grid[r2 as usize][c2 as usize] == 'M')
     } else {
         false
     }
@@ -131,7 +127,7 @@ mod tests {
     #[test]
     fn test_part_one() {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, Some(17));
+        assert_eq!(result, Some(18));
     }
 
     #[test]
