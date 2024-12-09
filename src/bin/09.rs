@@ -39,9 +39,6 @@ impl Memory {
         *old_element = b;
     }
 
-    // TODO: speed this up by building an ordered vec of all the ids at the end, then
-    // loop through all free-space slots, replacing them with ids from the end, and removing from
-    // the back each time something is successfully moved.
     pub fn compact(&mut self) {
         let mut free_space: VecDeque<usize> = self
             .memory
@@ -84,24 +81,6 @@ impl Memory {
                 }
             }
         });
-
-        // let mut stop = false;
-        //
-        // while !stop {
-        //     let block_to_move = self.memory.pop_back();
-        //     if let Some(Block::File(_)) = block_to_move {
-        //         let index_to_swap = self.find_index_of_first_gap();
-        //         match index_to_swap {
-        //             Some(idx) => {
-        //                 self.replace_at_index(idx, block_to_move.unwrap());
-        //             }
-        //             None => {
-        //                 self.memory.push_back(block_to_move.unwrap());
-        //                 stop = true;
-        //             }
-        //         }
-        //     }
-        // }
     }
 
     // TODO: Speed this up by changing how I map memory. Write it out for the checksum, but
