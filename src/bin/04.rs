@@ -2,19 +2,18 @@ use rayon::prelude::*;
 advent_of_code::solution!(4);
 
 const WORD_CHARS: [char; 4] = ['X', 'M', 'A', 'S'];
+const DIRECTIONS: [(isize, isize); 8] = [
+    (0, 1),
+    (0, -1),
+    (1, 0),
+    (-1, 0),
+    (1, 1),
+    (1, -1),
+    (-1, 1),
+    (-1, -1),
+];
 
 fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
-    let directions = [
-        (0, 1),
-        (0, -1),
-        (1, 0),
-        (-1, 0),
-        (1, 1),
-        (1, -1),
-        (-1, 1),
-        (-1, -1),
-    ];
-
     let rows = grid.len();
     let cols = grid[0].len();
 
@@ -24,9 +23,9 @@ fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
             (0..cols)
                 .map(|c| {
                     if grid[r][c] == 'X' {
-                        directions
+                        DIRECTIONS
                             .iter()
-                            .filter(|(dr, dc)| check_word(grid, r as isize, c as isize, *dr, *dc))
+                            .filter(|(dr, dc)| check_word(grid, r as isize, c as isize, dr, dc))
                             .count()
                     } else {
                         0
@@ -37,7 +36,7 @@ fn find_word_in_grid(grid: &[Vec<char>]) -> usize {
         .sum()
 }
 
-fn check_word(grid: &[Vec<char>], mut r: isize, mut c: isize, dr: isize, dc: isize) -> bool {
+fn check_word(grid: &[Vec<char>], mut r: isize, mut c: isize, dr: &isize, dc: &isize) -> bool {
     let offset_amount: isize = (WORD_CHARS.len()) as isize - 1;
     let ddr = offset_amount * dr;
     let ddc = offset_amount * dc;
@@ -48,14 +47,12 @@ fn check_word(grid: &[Vec<char>], mut r: isize, mut c: isize, dr: isize, dc: isi
     {
         return false;
     }
-    r += dr;
-    c += dc;
     for &ch in &WORD_CHARS[1..] {
+        r += dr;
+        c += dc;
         if grid[r as usize][c as usize] != ch {
             return false;
         }
-        r += dr;
-        c += dc;
     }
     true
 }
@@ -97,8 +94,7 @@ fn check_mas(grid: &[Vec<char>], r: usize, c: usize, dr: isize, dc: isize) -> bo
         && c2 >= 0
         && c2 < cols as isize
     {
-        (grid[r1 as usize][c1 as usize] == 'M' && grid[r2 as usize][c2 as usize] == 'S')
-            || (grid[r1 as usize][c1 as usize] == 'S' && grid[r2 as usize][c2 as usize] == 'M')
+        grid[r1 as usize][c1 as usize] == 'M' && grid[r2 as usize][c2 as usize] == 'S'
     } else {
         false
     }
