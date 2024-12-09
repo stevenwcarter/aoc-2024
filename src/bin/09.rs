@@ -43,36 +43,65 @@ impl Memory {
     // loop through all free-space slots, replacing them with ids from the end, and removing from
     // the back each time something is successfully moved.
     pub fn compact(&mut self) {
-        // let mut free_space: VecDeque<usize> = self
-        //     .memory
-        //     .iter()
-        //     .enumerate()
-        //     .filter_map(|(idx, b)| {
-        //         if let Block::Empty = b {
-        //             Some(idx)
-        //         } else {
-        //             None
-        //         }
-        //     })
-        //     .collect();
+        let mut free_space: VecDeque<usize> = self
+            .memory
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, b)| {
+                if let Block::Empty = b {
+                    Some(idx)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let blocks_to_move: VecDeque<(usize, usize)> = self
+            .memory
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, b)| {
+                if let Block::File(id) = b {
+                    Some((idx, *id))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         let mut stop = false;
-
-        while !stop {
-            let block_to_move = self.memory.pop_back();
-            if let Some(Block::File(_)) = block_to_move {
-                let index_to_swap = self.find_index_of_first_gap();
-                match index_to_swap {
-                    Some(idx) => {
-                        self.replace_at_index(idx, block_to_move.unwrap());
-                    }
-                    None => {
-                        self.memory.push_back(block_to_move.unwrap());
+        blocks_to_move.iter().rev().for_each(|(idx, id)| {
+            if !stop {
+                let index_to_update = free_space.pop_front();
+                if let Some(index_to_update) = index_to_update {
+                    if index_to_update < *idx {
+                        self.replace_at_index(index_to_update, Block::File(*id));
+                        *self.memory.get_mut(*idx).unwrap() = Block::Empty;
+                    } else {
                         stop = true;
                     }
+                } else {
+                    stop = true;
                 }
             }
-        }
+        });
+
+        // let mut stop = false;
+        //
+        // while !stop {
+        //     let block_to_move = self.memory.pop_back();
+        //     if let Some(Block::File(_)) = block_to_move {
+        //         let index_to_swap = self.find_index_of_first_gap();
+        //         match index_to_swap {
+        //             Some(idx) => {
+        //                 self.replace_at_index(idx, block_to_move.unwrap());
+        //             }
+        //             None => {
+        //                 self.memory.push_back(block_to_move.unwrap());
+        //                 stop = true;
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     // TODO: Speed this up by changing how I map memory. Write it out for the checksum, but
@@ -196,6 +225,7 @@ pub fn part_one(input: &str) -> Option<usize> {
         is_next_file = !is_next_file;
     }
 
+    // memory.print();
     memory.compact();
     // memory.print();
 
@@ -234,6 +264,7 @@ mod tests {
     #[test]
     fn test_part_one() {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
+        println!("0099811188827773336446555566");
         assert_eq!(result, Some(1928));
     }
 
