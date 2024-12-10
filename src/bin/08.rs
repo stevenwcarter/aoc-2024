@@ -1,6 +1,7 @@
 advent_of_code::solution!(8);
 
 use hashbrown::HashSet;
+use rayon::prelude::*;
 
 fn points_are_linear(points: &[(isize, isize)]) -> bool {
     // Fewer than 3 points are always collinear
@@ -26,61 +27,59 @@ fn points_are_linear(points: &[(isize, isize)]) -> bool {
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let mut antennas: Vec<(usize, usize, char)> = Vec::new();
+    let (row_count, antennas) = parse_antennas(input);
 
-    let mut row_count = 0;
-    for (y, row) in input.lines().enumerate() {
-        row_count += 1;
-        for (x, ch) in row.chars().enumerate() {
-            if ch.is_alphanumeric() {
-                antennas.push((x, y, ch));
-            }
-        }
-    }
+    let antinodes = (0..input.lines().next().unwrap().len())
+        .into_par_iter()
+        .fold(HashSet::new, |mut acc, x| {
+            for y in 0..row_count {
+                for i in 0..antennas.len() {
+                    for j in 0..antennas.len() {
+                        if i == j {
+                            continue;
+                        }
+                        let (x1, y1, freq1) = antennas[i];
+                        let (x2, y2, freq2) = antennas[j];
 
-    let mut antinodes: HashSet<(usize, usize)> = HashSet::new();
+                        if freq1 != freq2 {
+                            continue;
+                        }
 
-    for x in 0..input.lines().next().unwrap().len() {
-        for y in 0..row_count {
-            for i in 0..antennas.len() {
-                for j in 0..antennas.len() {
-                    if i == j {
-                        continue;
-                    }
-                    let (x1, y1, freq1) = antennas[i];
-                    let (x2, y2, freq2) = antennas[j];
+                        let dx1 = (x as isize - x1 as isize).abs();
+                        let dy1 = (y as isize - y1 as isize).abs();
+                        let dx2 = (x as isize - x2 as isize).abs();
+                        let dy2 = (y as isize - y2 as isize).abs();
 
-                    if freq1 != freq2 {
-                        continue;
-                    }
+                        let points: Vec<(isize, isize)> = vec![
+                            (x as isize, y as isize),
+                            (x1 as isize, y1 as isize),
+                            (x2 as isize, y2 as isize),
+                        ];
 
-                    let dx1 = (x as isize - x1 as isize).abs();
-                    let dy1 = (y as isize - y1 as isize).abs();
-                    let dx2 = (x as isize - x2 as isize).abs();
-                    let dy2 = (y as isize - y2 as isize).abs();
-
-                    let points: Vec<(isize, isize)> = vec![
-                        (x as isize, y as isize),
-                        (x1 as isize, y1 as isize),
-                        (x2 as isize, y2 as isize),
-                    ];
-
-                    // Ensure the second antenna is twice as far from the antinode
-                    if points_are_linear(&points[..])
-                        && (dx1 == 2 * dx2 || dx2 == 2 * dx1)
-                        && (dy1 == 2 * dy2 || dy2 == 2 * dy1)
-                    {
-                        antinodes.insert((x, y));
+                        // Ensure the second antenna is twice as far from the antinode
+                        if points_are_linear(&points[..])
+                            && (dx1 == 2 * dx2 || dx2 == 2 * dx1)
+                            && (dy1 == 2 * dy2 || dy2 == 2 * dy1)
+                        {
+                            acc.insert((x, y));
+                        }
                     }
                 }
             }
-        }
-    }
+            acc
+        })
+        .reduce_with(|mut m1, m2| {
+            for k in m2 {
+                m1.insert(k);
+            }
+            m1
+        })
+        .unwrap();
 
     Some(antinodes.len())
 }
 
-pub fn part_two(input: &str) -> Option<usize> {
+fn parse_antennas(input: &str) -> (usize, Vec<(usize, usize, char)>) {
     let mut antennas: Vec<(usize, usize, char)> = Vec::new();
 
     let mut row_count = 0;
@@ -93,36 +92,50 @@ pub fn part_two(input: &str) -> Option<usize> {
         }
     }
 
-    let mut antinodes: HashSet<(usize, usize)> = HashSet::new();
+    (row_count, antennas)
+}
 
-    for x in 0..input.lines().next().unwrap().len() {
-        for y in 0..row_count {
-            for i in 0..antennas.len() {
-                for j in 0..antennas.len() {
-                    if i == j {
-                        continue;
-                    }
-                    let (x1, y1, freq1) = antennas[i];
-                    let (x2, y2, freq2) = antennas[j];
+pub fn part_two(input: &str) -> Option<usize> {
+    let (row_count, antennas) = parse_antennas(input);
 
-                    if freq1 != freq2 {
-                        continue;
-                    }
+    let antinodes = (0..input.lines().next().unwrap().len())
+        .into_par_iter()
+        .fold(HashSet::new, |mut acc, x| {
+            for y in 0..row_count {
+                for i in 0..antennas.len() {
+                    for j in 0..antennas.len() {
+                        if i == j {
+                            continue;
+                        }
+                        let (x1, y1, freq1) = antennas[i];
+                        let (x2, y2, freq2) = antennas[j];
 
-                    let points: Vec<(isize, isize)> = vec![
-                        (x as isize, y as isize),
-                        (x1 as isize, y1 as isize),
-                        (x2 as isize, y2 as isize),
-                    ];
+                        if freq1 != freq2 {
+                            continue;
+                        }
 
-                    // Ensure the second antenna is twice as far from the antinode
-                    if points_are_linear(&points[..]) {
-                        antinodes.insert((x, y));
+                        let points: Vec<(isize, isize)> = vec![
+                            (x as isize, y as isize),
+                            (x1 as isize, y1 as isize),
+                            (x2 as isize, y2 as isize),
+                        ];
+
+                        // Ensure the second antenna is twice as far from the antinode
+                        if points_are_linear(&points[..]) {
+                            acc.insert((x, y));
+                        }
                     }
                 }
             }
-        }
-    }
+            acc
+        })
+        .reduce_with(|mut m1, m2| {
+            for k in m2 {
+                m1.insert(k);
+            }
+            m1
+        })
+        .unwrap();
 
     Some(antinodes.len())
 }
