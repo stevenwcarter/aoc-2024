@@ -65,15 +65,22 @@ impl Memory2 {
                 None
             })
     }
-    pub fn find_free_space(&self, needed_size: usize) -> Option<(usize, usize)> {
-        self.memory.iter().enumerate().find_map(|(index, b)| {
-            if let Block2::Empty(empty_block_size) = b {
-                if needed_size <= *empty_block_size {
-                    return Some((index, *empty_block_size));
+    pub fn find_free_space(
+        &self,
+        needed_size: usize,
+        source_index: usize,
+    ) -> Option<(usize, usize)> {
+        self.memory[0..source_index]
+            .iter()
+            .enumerate()
+            .find_map(|(index, b)| {
+                if let Block2::Empty(empty_block_size) = b {
+                    if needed_size <= *empty_block_size {
+                        return Some((index, *empty_block_size));
+                    }
                 }
-            }
-            None
-        })
+                None
+            })
     }
     pub fn compact(&mut self) {
         let mut stop = false;
@@ -84,7 +91,9 @@ impl Memory2 {
         while !stop {
             if let Some((source_index, block_to_move)) = self.get_next_block_to_move(last_index) {
                 last_index = source_index;
-                if let Some((free_index, _free_size)) = self.find_free_space(block_to_move.size) {
+                if let Some((free_index, _free_size)) =
+                    self.find_free_space(block_to_move.size, source_index)
+                {
                     if free_index < source_index {
                         let original = self.memory.get_mut(source_index).unwrap();
                         *original = Block2::Empty(block_to_move.size);
