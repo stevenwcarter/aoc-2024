@@ -1,5 +1,4 @@
 use cached::proc_macro::cached;
-use rayon::prelude::*;
 
 advent_of_code::solution!(11);
 
@@ -41,22 +40,31 @@ pub fn count_stones(stone: u64, count: u8) -> u64 {
     found_count
 }
 
-pub fn part_one(input: &str) -> Option<u64> {
-    let stones: Vec<u64> = input
+pub fn parse_stones(input: &str) -> Vec<u64> {
+    input
         .trim_end()
         .split(' ')
         .filter_map(|s| s.parse::<u64>().ok())
-        .collect();
-    Some(stones.iter().map(|n| count_stones(*n, 25)).sum())
+        .collect()
+}
+
+pub fn part_one(input: &str) -> Option<u64> {
+    Some(
+        parse_stones(input)
+            .iter()
+            .map(|n| count_stones(*n, 25))
+            .sum(),
+    )
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let stones: Vec<u64> = input
-        .trim_end()
-        .split(' ')
-        .filter_map(|s| s.parse::<u64>().ok())
-        .collect();
-    Some(stones.par_iter().map(|n| count_stones(*n, 75)).sum())
+    Some(
+        parse_stones(input)
+            .iter()
+            // .par_iter()
+            .map(|n| count_stones(*n, 75))
+            .sum(),
+    )
 }
 
 #[cfg(test)]
@@ -74,10 +82,4 @@ mod tests {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(55312));
     }
-
-    // #[test]
-    // fn test_part_two() {
-    //     let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-    //     assert_eq!(result, None);
-    // }
 }
