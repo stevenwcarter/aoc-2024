@@ -148,13 +148,13 @@ pub fn part_one(input: &str) -> Option<usize> {
 
 pub fn part_two(input: &str) -> Option<usize> {
     let state = State::new_from_input(input);
-    let clear_areas: Vec<Coord> = state
-        .grid
-        .iter()
-        .filter(|(_, square_type)| **square_type == SquareType::Clear)
-        .map(|(coord, _)| coord)
-        .copied()
-        .collect();
+    let mut check_state = state.clone();
+    while check_state.step() {
+        // run once to find visited areas, since those are the
+        // only places we could place an obstruction that would
+        // change the path
+    }
+    let clear_areas: Vec<Coord> = check_state.visited.keys().copied().collect();
 
     let valid_loops = clear_areas
         .par_iter()
