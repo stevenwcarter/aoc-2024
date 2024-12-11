@@ -40,20 +40,17 @@ impl Memory2 {
     }
     pub fn use_freespace_at_idx(&mut self, index: usize, size: usize, id: usize) {
         let free_space = self.memory.get_mut(index).unwrap();
-        match free_space {
-            Block2::Empty(empty_size) => {
-                let empty_size = *empty_size;
-                if empty_size == size {
-                    *free_space = Block2::File(FileBlock { size, id });
-                } else {
-                    *free_space = Block2::Empty(empty_size - size);
-                    self.memory.splice(
-                        index..index,
-                        std::iter::once(Block2::File(FileBlock { size, id })),
-                    );
-                }
+        if let Block2::Empty(empty_size) = free_space {
+            let empty_size = *empty_size;
+            if empty_size == size {
+                *free_space = Block2::File(FileBlock { size, id });
+            } else {
+                *free_space = Block2::Empty(empty_size - size);
+                self.memory.splice(
+                    index..index,
+                    std::iter::once(Block2::File(FileBlock { size, id })),
+                );
             }
-            _ => unreachable!("Should not be here"),
         }
     }
     pub fn get_next_block_to_move(&self, last_index: usize) -> Option<(usize, FileBlock)> {
@@ -61,7 +58,6 @@ impl Memory2 {
             .iter()
             .enumerate()
             .rev()
-            .filter(|(_, b)| matches!(b, Block2::File(_)))
             .find_map(|(index, b)| {
                 if let Block2::File(file_block) = b {
                     return Some((index, *file_block));
@@ -70,23 +66,21 @@ impl Memory2 {
             })
     }
     pub fn find_free_space(&self, needed_size: usize) -> Option<(usize, usize)> {
-        self.memory
-            .iter()
-            .enumerate()
-            .filter(|(_, b)| matches!(b, Block2::Empty(_)))
-            .find_map(|(index, b)| {
-                if let Block2::Empty(empty_block_size) = b {
-                    if needed_size <= *empty_block_size {
-                        return Some((index, *empty_block_size));
-                    }
+        self.memory.iter().enumerate().find_map(|(index, b)| {
+            if let Block2::Empty(empty_block_size) = b {
+                if needed_size <= *empty_block_size {
+                    return Some((index, *empty_block_size));
                 }
-                None
-            })
+            }
+            None
+        })
     }
     pub fn compact(&mut self) {
-        let mut ignored_ids: Vec<usize> = Vec::new();
         let mut stop = false;
+
+        // speeds up the processing by starting closer to the right spot
         let mut last_index = self.memory.len();
+
         while !stop {
             if let Some((source_index, block_to_move)) = self.get_next_block_to_move(last_index) {
                 last_index = source_index;
@@ -97,9 +91,6 @@ impl Memory2 {
                         self.use_freespace_at_idx(free_index, block_to_move.size, block_to_move.id);
                     }
                 }
-                ignored_ids.push(block_to_move.id);
-
-                //
             } else {
                 stop = true;
             }
@@ -217,7 +208,6 @@ impl Memory {
         self.memory
             .iter()
             .enumerate()
-            .filter(|(_, b)| matches!(b, Block::File(_)))
             .map(|(pos, b)| {
                 pos * match b {
                     Block::File(size) => *size,
