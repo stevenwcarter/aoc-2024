@@ -40,62 +40,53 @@ fn find_operator_order(test_val: u64, numbers: &mut VecDeque<u64>, is_part_2: bo
     let first_number = numbers.pop_front().unwrap();
     let second_number = numbers.pop_front().unwrap();
 
-    let added = first_number.checked_add(second_number);
-    let multiplied = first_number.checked_mul(second_number);
-
-    if let Some(added) = added {
-        if added == test_val && numbers.is_empty() {
-            return Some(test_val);
-        }
-        if added <= test_val {
-            let mut added_vec = numbers.clone();
-            added_vec.push_front(added);
-            let added_result = find_operator_order(test_val, &mut added_vec, is_part_2);
-            if added_result.is_some() {
-                return added_result;
+    let check_result = |check_val: Option<u64>| {
+        if let Some(check_val) = check_val {
+            if check_val == test_val && numbers.is_empty() {
+                return Some(test_val);
+            }
+            if check_val <= test_val {
+                let mut check_val_vec = numbers.clone();
+                check_val_vec.push_front(check_val);
+                let check_val_result = find_operator_order(test_val, &mut check_val_vec, is_part_2);
+                if check_val_result.is_some() {
+                    return check_val_result;
+                }
             }
         }
+        None
+    };
+
+    let multiplied = check_result(first_number.checked_mul(second_number));
+    if multiplied.is_some() {
+        return multiplied;
     }
 
-    if let Some(multiplied) = multiplied {
-        if multiplied == test_val && numbers.is_empty() {
-            return Some(test_val);
-        }
-        if multiplied <= test_val {
-            let mut multiplied_vec = numbers.clone();
-            multiplied_vec.push_front(multiplied);
-            let multiplied_result = find_operator_order(test_val, &mut multiplied_vec, is_part_2);
-            if multiplied_result.is_some() {
-                return multiplied_result;
-            }
-        }
+    let added = check_result(first_number.checked_add(second_number));
+    if added.is_some() {
+        return added;
     }
 
     if is_part_2 {
-        let concatenated = concatenate(first_number, second_number);
-        if let Some(concatenated) = concatenated {
-            if concatenated == test_val && numbers.is_empty() {
-                return Some(test_val);
-            }
-            if concatenated <= test_val {
-                let mut concatenated_vec = numbers.clone();
-                concatenated_vec.push_front(concatenated);
-                let concatenated_result =
-                    find_operator_order(test_val, &mut concatenated_vec, is_part_2);
-                return concatenated_result;
-            }
+        let concatenated = check_result(concatenate(first_number, second_number));
+        if concatenated.is_some() {
+            return concatenated;
         }
     }
 
     None
 }
 
+/// Counts the digits in the second number, then shifts the first number
+/// over by the same amount and adds the second number where there are now zeroes
+///
+/// 123, 456 becomes
+/// 123000 + 456 -> 123456
 fn concatenate(a: u64, b: u64) -> Option<u64> {
-    let mut a = a.to_string();
-    let b = b.to_string();
-    a.push_str(&b);
+    let digits = b.ilog10() + 1;
+    let a = a * 10u64.pow(digits) + b;
 
-    a.parse::<u64>().ok()
+    Some(a)
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
