@@ -6,6 +6,10 @@ edition = "2021"
 default-run = "advent_of_code"
 publish = false
 
+[profile.release]
+codegen-units = 1
+lto = "fat"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 doctest = false
