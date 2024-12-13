@@ -1,5 +1,7 @@
 advent_of_code::solution!(5);
 
+use rayon::prelude::*;
+
 use nom::{
     bytes::complete::tag,
     character::complete::{digit1, line_ending},
@@ -8,75 +10,7 @@ use nom::{
     sequence::{separated_pair, terminated},
     IResult,
 };
-use std::str::FromStr;
-
-use std::collections::{HashMap, HashSet};
-
-fn dfs_topological_sort(
-    node: u32,
-    graph: &HashMap<u32, Vec<u32>>,
-    visited: &mut HashSet<u32>,
-    rec_stack: &mut HashSet<u32>,
-    stack: &mut Vec<u32>,
-) -> Result<(), &'static str> {
-    if visited.contains(&node) {
-        return Ok(());
-    }
-
-    visited.insert(node);
-    rec_stack.insert(node);
-
-    if let Some(neighbors) = graph.get(&node) {
-        for &neighbor in neighbors {
-            dfs_topological_sort(neighbor, graph, visited, rec_stack, stack)?;
-        }
-    }
-
-    rec_stack.remove(&node);
-    stack.push(node);
-
-    Ok(())
-}
-
-fn topological_sort_dfs(rules: &[(u32, u32)], data: &[u32]) -> Result<Vec<u32>, &'static str> {
-    let mut graph: HashMap<u32, Vec<u32>> = HashMap::new();
-    rules
-        .iter()
-        .filter(|(a, b)| data.contains(a) && data.contains(b))
-        .for_each(|(a, b)| {
-            graph.entry(*a).or_default().push(*b);
-        });
-
-    let mut visited = HashSet::new();
-    let mut rec_stack = HashSet::new();
-    let mut stack = Vec::new();
-
-    for &node in graph.keys() {
-        if !visited.contains(&node) {
-            dfs_topological_sort(node, &graph, &mut visited, &mut rec_stack, &mut stack)?;
-        }
-    }
-
-    stack.reverse();
-    Ok(stack)
-}
-
-fn reorder_sequence(global_order: &[u32], sequence: Vec<u32>) -> Vec<u32> {
-    let order_map: HashMap<u32, usize> = global_order
-        .iter()
-        .enumerate()
-        .map(|(i, &num)| (num, i))
-        .collect();
-
-    // Filter and sort the sequence based on the global order
-    let mut filtered_sequence: Vec<u32> = sequence
-        .into_iter()
-        .filter(|&num| order_map.contains_key(&num))
-        .collect();
-
-    filtered_sequence.sort_by_key(|&num| order_map[&num]);
-    filtered_sequence
-}
+use std::{cmp::Ordering, str::FromStr};
 
 fn parse_number(input: &str) -> IResult<&str, u32> {
     map_res(digit1, |s: &str| u32::from_str(s))(input)
@@ -103,44 +37,38 @@ fn parse_input(input: &str) -> IResult<&str, (Rules, Data)> {
     Ok((input, (pipe_lines, comma_lines)))
 }
 
-fn is_correct_order(data: &[u32], checks: &[(u32, u32)]) -> bool {
-    checks.iter().all(|(l, r)| {
-        let lr = data.iter().position(|v| v == l);
-        let rr = data.iter().position(|v| v == r);
-        match (lr, rr) {
-            (Some(lr), Some(rr)) => lr < rr,
-            _ => true,
-        }
-    })
-}
-
-fn find_middle(data: &[u32]) -> u32 {
-    let mid_index = data.len() / 2;
-    data[mid_index]
-}
-
 pub fn part_one(input: &str) -> Option<u32> {
     let (checks, data) = parse_input(input).unwrap().1;
+
     Some(
-        data.iter()
-            .filter(|d| is_correct_order(d, &checks))
-            .map(|d| find_middle(d))
+        data.par_iter()
+            .filter(|d| d.is_sorted_by(|x, y| !checks.contains(&(*y, *x))))
+            .map(|d| d[d.len() / 2])
             .sum(),
     )
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let (checks, data) = parse_input(input).unwrap().1;
+    let (checks, mut data) = parse_input(input).unwrap().1;
+
+    let comparator = |x: &u32, y: &u32| {
+        if checks.contains(&(*y, *x)) {
+            Ordering::Greater
+        } else if checks.contains(&(*x, *y)) {
+            Ordering::Less
+        } else {
+            Ordering::Equal
+        }
+    };
 
     Some(
-        data[..]
-            .iter()
-            .filter(|d| !is_correct_order(d, &checks))
+        data.par_iter_mut()
+            .filter(|d| !d.is_sorted_by(|a, b| comparator(a, b) != Ordering::Greater))
             .map(|d| {
-                let correct_order = topological_sort_dfs(&checks, d).unwrap();
-                reorder_sequence(&correct_order, d.to_vec())
+                d.sort_by(comparator);
+                d
             })
-            .map(|d| find_middle(&d))
+            .map(|d| d[d.len() / 2])
             .sum(),
     )
 }
