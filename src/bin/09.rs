@@ -1,4 +1,7 @@
+#![allow(unused_assignments)]
 use std::collections::VecDeque;
+
+use itertools::{EitherOrBoth::*, Itertools};
 
 advent_of_code::solution!(9);
 
@@ -58,11 +61,9 @@ impl Memory2 {
             .iter()
             .enumerate()
             .rev()
-            .find_map(|(index, b)| {
-                if let Block2::File(file_block) = b {
-                    return Some((index, *file_block));
-                }
-                None
+            .find_map(|(index, b)| match b {
+                Block2::File(file_block) => Some((index, *file_block)),
+                _ => None,
             })
     }
     pub fn find_free_space(
@@ -73,13 +74,15 @@ impl Memory2 {
         self.memory[0..source_index]
             .iter()
             .enumerate()
-            .find_map(|(index, b)| {
-                if let Block2::Empty(empty_block_size) = b {
+            .find_map(|(index, b)| match b {
+                Block2::Empty(empty_block_size) => {
                     if needed_size <= *empty_block_size {
-                        return Some((index, *empty_block_size));
+                        Some((index, *empty_block_size))
+                    } else {
+                        None
                     }
                 }
-                None
+                _ => None,
             })
     }
     pub fn compact(&mut self) {
@@ -107,26 +110,19 @@ impl Memory2 {
     }
 
     pub fn checksum(&self) -> usize {
-        let mut checksum_vec: Vec<usize> = Vec::new();
-        self.memory.iter().for_each(|b| match b {
-            Block2::File(file_block) => {
-                (0..file_block.size).for_each(|_| {
-                    checksum_vec.push(file_block.id);
-                });
-            }
-            Block2::Empty(size) => {
-                (0..*size).for_each(|_| {
-                    checksum_vec.push(0);
-                });
-            }
-        });
-
-        checksum_vec
+        self.memory
             .iter()
+            .flat_map(|b| match b {
+                Block2::File(file_block) => (0..file_block.size)
+                    .map(|_| file_block.id)
+                    .collect::<Vec<_>>(),
+                Block2::Empty(size) => (0..*size).map(|_| 0).collect(),
+            })
             .enumerate()
             .map(|(pos, id)| pos * id)
             .sum()
     }
+
     pub fn print(&self) {
         let msg = self
             .memory
@@ -145,9 +141,8 @@ impl Memory2 {
 
 impl Memory {
     pub fn push_file(&mut self, size: usize, id: usize) {
-        (0..size).for_each(|_| {
-            self.memory.push_back(Block::File(id));
-        });
+        let iter = (0..size).map(|_| Block::File(id));
+        self.memory.extend(iter);
     }
     pub fn push_freespace(&mut self, size: usize) {
         (0..size).for_each(|_| {
@@ -155,12 +150,9 @@ impl Memory {
         });
     }
     pub fn find_index_of_first_gap(&self) -> Option<usize> {
-        self.memory.iter().enumerate().find_map(|(idx, b)| {
-            if matches!(b, Block::Empty) {
-                Some(idx)
-            } else {
-                None
-            }
+        self.memory.iter().enumerate().find_map(|(idx, b)| match b {
+            Block::Empty => Some(idx),
+            _ => None,
         })
     }
 
@@ -174,24 +166,18 @@ impl Memory {
             .memory
             .iter()
             .enumerate()
-            .filter_map(|(idx, b)| {
-                if let Block::Empty = b {
-                    Some(idx)
-                } else {
-                    None
-                }
+            .filter_map(|(idx, b)| match b {
+                Block::Empty => Some(idx),
+                _ => None,
             })
             .collect();
         let blocks_to_move: VecDeque<(usize, usize)> = self
             .memory
             .iter()
             .enumerate()
-            .filter_map(|(idx, b)| {
-                if let Block::File(id) = b {
-                    Some((idx, *id))
-                } else {
-                    None
-                }
+            .filter_map(|(idx, b)| match b {
+                Block::File(id) => Some((idx, *id)),
+                _ => None,
             })
             .collect();
 
@@ -241,20 +227,25 @@ impl Memory {
 }
 
 pub fn part_one(input: &str) -> Option<usize> {
-    let mut is_next_file = true;
     let mut id = 0;
-    let mut memory = Memory::default();
+    let mut memory = VecDeque::new();
 
-    for char in input.trim_end().chars() {
-        let size = char.to_digit(10).unwrap() as usize;
-        if is_next_file {
-            memory.push_file(size, id);
-            id += 1;
-        } else {
-            memory.push_freespace(size);
-        }
-        is_next_file = !is_next_file;
-    }
+    input
+        .trim_end()
+        .chars()
+        .enumerate()
+        .for_each(|(index, char)| {
+            let size = char.to_digit(10).unwrap() as usize;
+            if index % 2 == 0 {
+                let iter = (0..size).map(|_| Block::File(id));
+                memory.extend(iter);
+                id += 1;
+            } else {
+                let iter = (0..size).map(|_| Block::Empty);
+                memory.extend(iter);
+            }
+        });
+    let mut memory = Memory { memory };
 
     memory.compact();
 
@@ -262,22 +253,33 @@ pub fn part_one(input: &str) -> Option<usize> {
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    let mut is_next_file = true;
     let mut id = 0;
-    let mut memory = Memory2::default();
 
-    for char in input.trim_end().chars() {
-        let size = char.to_digit(10).unwrap() as usize;
-        if is_next_file {
-            // file
-            memory.push_file(size, id);
-            id += 1;
-        } else {
-            // free space
-            memory.push_freespace(size);
-        }
-        is_next_file = !is_next_file;
-    }
+    let input_iter = input
+        .trim_end()
+        .chars()
+        .map(|ch| ch.to_digit(10).unwrap() as usize);
+
+    let even_iter = input_iter.clone().step_by(2);
+    let odd_iter = input_iter.skip(1).step_by(2);
+
+    let mut even_fn = |size: usize| {
+        let block = Block2::File(FileBlock { size, id });
+        id += 1;
+
+        block
+    };
+
+    let memory: Vec<Block2> = even_iter
+        .zip_longest(odd_iter)
+        .flat_map(|pair| match pair {
+            Both(even, odd_size) => vec![even_fn(even), Block2::Empty(odd_size)],
+            Left(even) => vec![even_fn(even), Block2::Empty(0)],
+            Right(_odd) => unreachable!("impossible"),
+        })
+        .collect();
+
+    let mut memory = Memory2 { memory };
 
     memory.compact();
 

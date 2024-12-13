@@ -108,10 +108,10 @@ pub fn part_two(input: &str) -> Option<u64> {
         parse_lines(input)
             .unwrap()
             .1
-            .par_iter()
+            .into_par_iter()
             .filter_map(|(test_val, numbers)| {
-                let mut numbers = VecDeque::from(numbers.clone());
-                find_operator_order(*test_val, &mut numbers, true)
+                let mut numbers = VecDeque::from(numbers);
+                find_operator_order(test_val, &mut numbers, true)
             })
             .sum(),
     )
