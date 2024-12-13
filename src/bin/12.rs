@@ -75,11 +75,7 @@ impl Garden {
         y: usize,
         ch: &char,
         visited: &mut HashMap<(usize, usize), bool>,
-    ) -> Option<HashSet<(usize, usize)>> {
-        if *visited.get(&(x, y)).unwrap_or(&false) {
-            return None;
-        }
-
+    ) -> HashSet<(usize, usize)> {
         let mut neighbors = HashSet::new();
         let mut stack = vec![(x, y)];
         visited.insert((x, y), true);
@@ -106,7 +102,7 @@ impl Garden {
             }
         }
 
-        Some(neighbors)
+        neighbors
     }
 
     pub fn find_areas(&self, is_part_2: bool) -> Vec<(usize, usize, char)> {
@@ -116,7 +112,7 @@ impl Garden {
         for (y, row) in self.grid.iter().enumerate() {
             for (x, ch) in row.iter().enumerate() {
                 if !visited.get(&(x, y)).unwrap_or(&false) {
-                    let neighbors = self.find_neighbors(x, y, ch, &mut visited).unwrap();
+                    let neighbors = self.find_neighbors(x, y, ch, &mut visited);
 
                     // find area
                     let area = neighbors.len();
