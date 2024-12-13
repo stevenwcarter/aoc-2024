@@ -77,34 +77,36 @@ impl Garden {
         visited: &mut HashMap<(usize, usize), bool>,
     ) -> Option<HashSet<(usize, usize)>> {
         if *visited.get(&(x, y)).unwrap_or(&false) {
-            None
-        } else {
-            let mut neighbors: HashSet<(usize, usize)> = vec![(x, y)].into_iter().collect();
-            // neighbors.insert((x, y));
-            *visited.entry((x, y)).or_insert(true) = true;
-            if x > 0 && self.grid[y][x - 1] == *ch {
-                if let Some(extension) = self.find_neighbors(x - 1, y, ch, visited) {
-                    neighbors.extend(extension);
-                }
-            }
-            if y > 0 && self.grid[y - 1][x] == *ch {
-                if let Some(extension) = self.find_neighbors(x, y - 1, ch, visited) {
-                    neighbors.extend(extension);
-                }
-            }
-            if x < self.width - 1 && self.grid[y][x + 1] == *ch {
-                if let Some(extension) = self.find_neighbors(x + 1, y, ch, visited) {
-                    neighbors.extend(extension);
-                }
-            }
-            if y < self.height - 1 && self.grid[y + 1][x] == *ch {
-                if let Some(extension) = self.find_neighbors(x, y + 1, ch, visited) {
-                    neighbors.extend(extension);
-                }
-            }
-
-            Some(neighbors)
+            return None;
         }
+
+        let mut neighbors = HashSet::new();
+        let mut stack = vec![(x, y)];
+        visited.insert((x, y), true);
+
+        while let Some((cx, cy)) = stack.pop() {
+            neighbors.insert((cx, cy));
+
+            let directions = [
+                (cx.wrapping_sub(1), cy),
+                (cx + 1, cy),
+                (cx, cy.wrapping_sub(1)),
+                (cx, cy + 1),
+            ];
+
+            for &(nx, ny) in directions.iter() {
+                if nx < self.width
+                    && ny < self.height
+                    && self.grid[ny][nx] == *ch
+                    && !*visited.get(&(nx, ny)).unwrap_or(&false)
+                {
+                    stack.push((nx, ny));
+                    visited.insert((nx, ny), true);
+                }
+            }
+        }
+
+        Some(neighbors)
     }
 
     pub fn find_areas(&self, is_part_2: bool) -> Vec<(usize, usize, char)> {
