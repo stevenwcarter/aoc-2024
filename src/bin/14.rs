@@ -1,5 +1,11 @@
 advent_of_code::solution!(14);
 
+use rayon::prelude::*;
+use std::{
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    thread::available_parallelism,
+};
+
 use hashbrown::HashMap;
 use nom::{
     bytes::complete::tag,
@@ -79,31 +85,6 @@ fn step_robot(
     (px, py)
 }
 
-// fn find_lines_center(points: &mut [(usize, usize)], width: usize, height: usize) -> bool {
-//     let offset = 20;
-//     let mid_x = width / 2;
-//     let mid_y = height / 2;
-//     let start_x = mid_x - offset;
-//     let start_y = mid_y - offset;
-//
-//     let mut found = false;
-//     (start_x..start_x + offset * 2).step_by(5).for_each(|x| {
-//         (start_y..start_y + offset * 2).step_by(5).for_each(|y| {
-//             if !found
-//                 && points.contains(&(x, y))
-//                 && points.contains(&(x + 1, y + 1))
-//                 && points.contains(&(x + 1, y))
-//                 && points.contains(&(x + 2, y))
-//                 && points.contains(&(x, y + 1))
-//                 && points.contains(&(x, y + 2))
-//             {
-//                 found = true;
-//             }
-//         });
-//     });
-//
-//     found
-// }
 fn find_lines(points: &mut [(usize, usize)]) -> bool {
     // Sort points by (x, y)
     points.sort_unstable();
@@ -131,26 +112,37 @@ fn find_lines(points: &mut [(usize, usize)]) -> bool {
     false
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<usize> {
     let is_test = input.len() < 200;
     let width = if is_test { 11 } else { 101 };
     let height = if is_test { 7 } else { 103 };
     let robots = parse_input(input).unwrap().1;
 
-    let mut found = false;
-    let mut steps = 0;
-    while !found {
-        steps += 1;
-        let mut updated_robots: Vec<(usize, usize)> = robots
-            .iter()
-            .map(|robot| step_robot(robot, steps, width, height))
-            .collect();
-        if find_lines(&mut updated_robots) {
-            found = true;
-        }
-    }
+    let thread_count = available_parallelism().unwrap().get().max(16);
+    let found = AtomicBool::new(false);
+    let steps = AtomicUsize::new(0);
 
-    Some(steps as u32)
+    (0..thread_count).into_par_iter().for_each(|offset| {
+        let mut i = 0;
+        loop {
+            let check = i * thread_count + offset;
+            if check > 10000 || found.load(Ordering::Relaxed) {
+                return;
+            }
+            let mut updated_robots: Vec<(usize, usize)> = robots
+                .iter()
+                .map(|robot| step_robot(robot, check as i64, width, height))
+                .collect();
+            if find_lines(&mut updated_robots) {
+                found.store(true, Ordering::Relaxed);
+                steps.store(check, Ordering::Relaxed);
+            } else {
+                i += 1;
+            }
+        }
+    });
+
+    Some(steps.load(Ordering::Relaxed))
 }
 
 #[cfg(test)]
