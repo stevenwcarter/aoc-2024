@@ -1,289 +1,89 @@
-#![allow(unused_assignments)]
-use std::collections::VecDeque;
-
-use itertools::{EitherOrBoth::*, Itertools};
-
 advent_of_code::solution!(9);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Block {
-    File(usize),
-    Empty,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FileBlock {
-    size: usize,
-    id: usize,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Block2 {
-    File(FileBlock),
-    Empty(usize),
-}
-
-#[derive(Default, Debug)]
-pub struct Memory {
-    pub memory: VecDeque<Block>,
-}
-
-#[derive(Default, Debug)]
-pub struct Memory2 {
-    pub memory: Vec<Block2>,
-}
-
-// memory for part 2
-impl Memory2 {
-    pub fn push_file(&mut self, size: usize, id: usize) {
-        self.memory.push(Block2::File(FileBlock { size, id }));
-    }
-    pub fn push_freespace(&mut self, size: usize) {
-        self.memory.push(Block2::Empty(size));
-    }
-    pub fn use_freespace_at_idx(&mut self, index: usize, size: usize, id: usize) {
-        let free_space = self.memory.get_mut(index).unwrap();
-        if let Block2::Empty(empty_size) = free_space {
-            let empty_size = *empty_size;
-            if empty_size == size {
-                *free_space = Block2::File(FileBlock { size, id });
-            } else {
-                *free_space = Block2::Empty(empty_size - size);
-                self.memory.splice(
-                    index..index,
-                    std::iter::once(Block2::File(FileBlock { size, id })),
-                );
-            }
-        }
-    }
-    pub fn get_next_block_to_move(&self, last_index: usize) -> Option<(usize, FileBlock)> {
-        self.memory[0..last_index]
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(index, b)| match b {
-                Block2::File(file_block) => Some((index, *file_block)),
-                _ => None,
-            })
-    }
-    pub fn find_free_space(
-        &self,
-        needed_size: usize,
-        source_index: usize,
-    ) -> Option<(usize, usize)> {
-        self.memory[0..source_index]
-            .iter()
-            .enumerate()
-            .find_map(|(index, b)| match b {
-                Block2::Empty(empty_block_size) => {
-                    if needed_size <= *empty_block_size {
-                        Some((index, *empty_block_size))
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            })
-    }
-    pub fn compact(&mut self) {
-        let mut stop = false;
-
-        // speeds up the processing by starting closer to the right spot
-        let mut last_index = self.memory.len();
-
-        while !stop {
-            if let Some((source_index, block_to_move)) = self.get_next_block_to_move(last_index) {
-                last_index = source_index;
-                if let Some((free_index, _free_size)) =
-                    self.find_free_space(block_to_move.size, source_index)
-                {
-                    if free_index < source_index {
-                        let original = self.memory.get_mut(source_index).unwrap();
-                        *original = Block2::Empty(block_to_move.size);
-                        self.use_freespace_at_idx(free_index, block_to_move.size, block_to_move.id);
-                    }
-                }
-            } else {
-                stop = true;
-            }
-        }
-    }
-
-    pub fn checksum(&self) -> usize {
-        self.memory
-            .iter()
-            .flat_map(|b| match b {
-                Block2::File(file_block) => (0..file_block.size)
-                    .map(|_| file_block.id)
-                    .collect::<Vec<_>>(),
-                Block2::Empty(size) => (0..*size).map(|_| 0).collect(),
-            })
-            .enumerate()
-            .map(|(pos, id)| pos * id)
-            .sum()
-    }
-
-    pub fn print(&self) {
-        let msg = self
-            .memory
-            .iter()
-            .map(|b| match b {
-                Block2::File(file_block) => (0..file_block.size)
-                    .map(|_| file_block.id.to_string())
-                    .collect::<String>(),
-                Block2::Empty(size) => (0..*size).map(|_| ".".to_string()).collect::<String>(),
-            })
-            .collect::<String>();
-
-        println!("{}", msg);
-    }
-}
-
-impl Memory {
-    pub fn push_file(&mut self, size: usize, id: usize) {
-        let iter = (0..size).map(|_| Block::File(id));
-        self.memory.extend(iter);
-    }
-    pub fn push_freespace(&mut self, size: usize) {
-        (0..size).for_each(|_| {
-            self.memory.push_back(Block::Empty);
-        });
-    }
-    pub fn find_index_of_first_gap(&self) -> Option<usize> {
-        self.memory.iter().enumerate().find_map(|(idx, b)| match b {
-            Block::Empty => Some(idx),
-            _ => None,
-        })
-    }
-
-    pub fn replace_at_index(&mut self, idx: usize, b: Block) {
-        let old_element = self.memory.get_mut(idx).unwrap();
-        *old_element = b;
-    }
-
-    pub fn compact(&mut self) {
-        let mut free_space: VecDeque<usize> = self
-            .memory
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, b)| match b {
-                Block::Empty => Some(idx),
-                _ => None,
-            })
-            .collect();
-        let blocks_to_move: VecDeque<(usize, usize)> = self
-            .memory
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, b)| match b {
-                Block::File(id) => Some((idx, *id)),
-                _ => None,
-            })
-            .collect();
-
-        let mut stop = false;
-        blocks_to_move.iter().rev().for_each(|(idx, id)| {
-            if !stop {
-                let index_to_update = free_space.pop_front();
-                if let Some(index_to_update) = index_to_update {
-                    if index_to_update < *idx {
-                        self.replace_at_index(index_to_update, Block::File(*id));
-                        *self.memory.get_mut(*idx).unwrap() = Block::Empty;
-                    } else {
-                        stop = true;
-                    }
-                } else {
-                    stop = true;
-                }
-            }
-        });
-    }
-
-    pub fn checksum(&self) -> usize {
-        self.memory
-            .iter()
-            .enumerate()
-            .map(|(pos, b)| {
-                pos * match b {
-                    Block::File(size) => *size,
-                    _ => 0,
-                }
-            })
-            .sum()
-    }
-
-    pub fn print(&self) {
-        let msg = self
-            .memory
-            .iter()
-            .map(|b| match b {
-                Block::File(id) => id.to_string(),
-                Block::Empty => ".".to_string(),
-            })
-            .collect::<String>();
-
-        println!("{}", msg);
-    }
-}
-
 pub fn part_one(input: &str) -> Option<usize> {
-    let mut id = 0;
-    let mut memory = VecDeque::new();
+    let mut checksum: usize = 0;
+    let mut index = 0;
 
-    input
+    let input: Vec<usize> = input
         .trim_end()
         .chars()
-        .enumerate()
-        .for_each(|(index, char)| {
-            let size = char.to_digit(10).unwrap() as usize;
-            if index % 2 == 0 {
-                let iter = (0..size).map(|_| Block::File(id));
-                memory.extend(iter);
-                id += 1;
-            } else {
-                let iter = (0..size).map(|_| Block::Empty);
-                memory.extend(iter);
+        .map(|ch| ch.to_digit(10).unwrap() as usize)
+        .collect();
+
+    let mut left_ptr = 0;
+    let mut right_ptr = input.len() - 1;
+    let mut needs_free_space = input[right_ptr];
+
+    while left_ptr < right_ptr {
+        for _ in 0..input[left_ptr] {
+            checksum += (left_ptr / 2) * index;
+            index += 1;
+        }
+        left_ptr += 1;
+
+        for _ in 0..input[left_ptr] {
+            if needs_free_space == 0 {
+                right_ptr -= 2;
+                if right_ptr <= left_ptr {
+                    // stop once overlap starts
+                    break;
+                }
+                needs_free_space = input[right_ptr];
             }
-        });
-    let mut memory = Memory { memory };
+            checksum += (right_ptr / 2) * index;
+            index += 1;
+            needs_free_space -= 1;
+        }
+        left_ptr += 1;
+    }
 
-    memory.compact();
+    for _ in 0..needs_free_space {
+        checksum += (right_ptr / 2) * index;
+        index += 1;
+    }
 
-    Some(memory.checksum())
+    Some(checksum)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
-    let mut id = 0;
-
-    let input_iter = input
+    let mut input: Vec<usize> = input
         .trim_end()
         .chars()
-        .map(|ch| ch.to_digit(10).unwrap() as usize);
-
-    let even_iter = input_iter.clone().step_by(2);
-    let odd_iter = input_iter.skip(1).step_by(2);
-
-    let mut even_fn = |size: usize| {
-        let block = Block2::File(FileBlock { size, id });
-        id += 1;
-
-        block
-    };
-
-    let memory: Vec<Block2> = even_iter
-        .zip_longest(odd_iter)
-        .flat_map(|pair| match pair {
-            Both(even, odd_size) => vec![even_fn(even), Block2::Empty(odd_size)],
-            Left(even) => vec![even_fn(even), Block2::Empty(0)],
-            Right(_odd) => unreachable!("impossible"),
-        })
+        .map(|ch| ch.to_digit(10).unwrap() as usize)
         .collect();
 
-    let mut memory = Memory2 { memory };
+    let input_length = input.len();
 
-    memory.compact();
+    let mut checksum: usize = 0;
 
-    Some(memory.checksum())
+    let mut free_space_index = vec![0; input_length];
+    for i in 1..input_length {
+        free_space_index[i] = free_space_index[i - 1] + input[i - 1];
+    }
+
+    for right_ptr in (0..input_length).rev().step_by(2) {
+        let mut free_space_found = false;
+
+        for left_ptr in (1..right_ptr).step_by(2) {
+            if input[left_ptr] >= input[right_ptr] {
+                for i in 0..input[right_ptr] {
+                    checksum += (right_ptr / 2) * (free_space_index[left_ptr] + i);
+                }
+                input[left_ptr] -= input[right_ptr];
+                free_space_index[left_ptr] += input[right_ptr];
+                free_space_found = true;
+                break;
+            }
+        }
+
+        if !free_space_found {
+            for i in 0..input[right_ptr] {
+                checksum += (right_ptr / 2) * (free_space_index[right_ptr] + i);
+            }
+        }
+    }
+
+    Some(checksum)
 }
 
 #[cfg(test)]

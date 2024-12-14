@@ -1,5 +1,7 @@
+#![allow(unused_imports)]
 use hashbrown::{HashMap, HashSet};
 
+use rayon::prelude::*;
 advent_of_code::solution!(12);
 
 fn count_corners(grid: &HashSet<(usize, usize)>) -> usize {
