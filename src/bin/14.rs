@@ -43,7 +43,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     let height = if is_test { 7 } else { 103 };
     let robots = parse_input(input).unwrap().1;
 
-    let updated_robots: Vec<(usize, usize)> = robots
+    let updated_robots: Vec<RobotPosition> = robots
         .iter()
         .map(|robot| step_robot(robot, steps, width, height))
         .collect();
@@ -74,7 +74,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 fn step_robot(
-    ((px, py), (vx, vy)): &((usize, usize), (i64, i64)),
+    ((px, py), (vx, vy)): &RobotPositionsAndVelocity,
     steps: i64,
     width: usize,
     height: usize,
@@ -85,7 +85,7 @@ fn step_robot(
     (px, py)
 }
 
-fn find_lines(points: &mut [(usize, usize)]) -> bool {
+fn find_lines(points: &mut [RobotPosition]) -> bool {
     // Sort points by (x, y)
     points.sort_unstable();
 
@@ -129,7 +129,7 @@ pub fn part_two(input: &str) -> Option<usize> {
             if check > 10000 || found.load(Ordering::Relaxed) {
                 return;
             }
-            let mut updated_robots: Vec<(usize, usize)> = robots
+            let mut updated_robots: Vec<RobotPosition> = robots
                 .iter()
                 .map(|robot| step_robot(robot, check as i64, width, height))
                 .collect();
