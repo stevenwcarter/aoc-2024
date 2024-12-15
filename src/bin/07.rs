@@ -40,29 +40,27 @@ fn find_operator_order(test_val: u64, numbers: &mut VecDeque<u64>, is_part_2: bo
     let first_number = numbers.pop_front().unwrap();
     let second_number = numbers.pop_front().unwrap();
 
-    let check_result = |check_val: Option<u64>| {
-        if let Some(check_val) = check_val {
-            if check_val == test_val && numbers.is_empty() {
-                return Some(test_val);
-            }
-            if check_val <= test_val {
-                let mut check_val_vec = numbers.clone();
-                check_val_vec.push_front(check_val);
-                let check_val_result = find_operator_order(test_val, &mut check_val_vec, is_part_2);
-                if check_val_result.is_some() {
-                    return check_val_result;
-                }
+    let check_result = |check_val: u64| {
+        if check_val == test_val && numbers.is_empty() {
+            return Some(test_val);
+        }
+        if check_val <= test_val {
+            let mut check_val_vec = numbers.clone();
+            check_val_vec.push_front(check_val);
+            let check_val_result = find_operator_order(test_val, &mut check_val_vec, is_part_2);
+            if check_val_result.is_some() {
+                return check_val_result;
             }
         }
         None
     };
 
-    let multiplied = check_result(first_number.checked_mul(second_number));
+    let multiplied = check_result(first_number * second_number);
     if multiplied.is_some() {
         return multiplied;
     }
 
-    let added = check_result(first_number.checked_add(second_number));
+    let added = check_result(first_number + second_number);
     if added.is_some() {
         return added;
     }
@@ -82,11 +80,9 @@ fn find_operator_order(test_val: u64, numbers: &mut VecDeque<u64>, is_part_2: bo
 ///
 /// 123, 456 becomes
 /// 123000 + 456 -> 123456
-fn concatenate(a: u64, b: u64) -> Option<u64> {
+fn concatenate(a: u64, b: u64) -> u64 {
     let digits = b.ilog10() + 1;
-    let a = a * 10u64.pow(digits) + b;
-
-    Some(a)
+    a * 10u64.pow(digits) + b
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
