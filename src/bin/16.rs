@@ -1,4 +1,5 @@
 #![allow(unused_assignments)]
+use advent_of_code::Point;
 use num::Zero;
 
 use hashbrown::{HashMap, HashSet};
@@ -113,37 +114,7 @@ where
     all_paths
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Point {
-    x: u32,
-    y: u32,
-}
-
-impl From<(usize, usize)> for Point {
-    fn from(value: (usize, usize)) -> Self {
-        Self {
-            x: value.0 as u32,
-            y: value.1 as u32,
-        }
-    }
-}
-impl From<(u32, u32)> for Point {
-    fn from(value: (u32, u32)) -> Self {
-        Self {
-            x: value.0,
-            y: value.1,
-        }
-    }
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Direction {
-    North,
-    South,
-    West,
-    East,
-}
-
-use Direction::*;
+use advent_of_code::CardinalDirection::{self, *};
 
 pub struct Maze {
     pub walls: HashSet<Point>,
@@ -151,7 +122,7 @@ pub struct Maze {
     pub height: usize,
     pub goal: Point,
     pub position: Point,
-    pub facing: Direction,
+    pub facing: CardinalDirection,
 }
 
 impl Maze {
@@ -195,17 +166,17 @@ impl Maze {
             height,
             position: start.unwrap(),
             goal: goal.unwrap(),
-            facing: Direction::East,
+            facing: CardinalDirection::East,
         }
     }
 
     pub fn successors(
         &self,
         position: &Point,
-        facing: &Direction,
-    ) -> Vec<((Point, Direction), u32)> {
-        let mut right_dir: Option<Direction> = None;
-        let mut left_dir: Option<Direction> = None;
+        facing: &CardinalDirection,
+    ) -> Vec<((Point, CardinalDirection), u32)> {
+        let mut right_dir: Option<CardinalDirection> = None;
+        let mut left_dir: Option<CardinalDirection> = None;
         let advancement_step: Option<Point> = match facing {
             North => {
                 right_dir = Some(East);
@@ -244,7 +215,7 @@ impl Maze {
                 }
             }
         };
-        let mut options: Vec<((Point, Direction), u32)> = vec![
+        let mut options: Vec<((Point, CardinalDirection), u32)> = vec![
             ((*position, left_dir.unwrap()), 1000),
             ((*position, right_dir.unwrap()), 1000),
         ];
@@ -260,7 +231,7 @@ impl Maze {
 
 pub fn part_one(input: &str) -> Option<u32> {
     let maze = Maze::parse_input(input);
-    let start: (Point, Direction) = (maze.position, maze.facing);
+    let start: (Point, CardinalDirection) = (maze.position, maze.facing);
 
     let result = pathfinding::directed::dijkstra::dijkstra(
         &start,
@@ -274,7 +245,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     let maze = Maze::parse_input(input);
-    let start: (Point, Direction) = (maze.position, maze.facing);
+    let start: (Point, CardinalDirection) = (maze.position, maze.facing);
 
     let results = dijkstra(
         &start,

@@ -2,13 +2,7 @@ use hashbrown::HashMap;
 
 advent_of_code::solution!(15);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
+use advent_of_code::Direction;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockType {
@@ -217,7 +211,6 @@ impl Warehouse {
             BlockType::Box => {
                 if direction == Direction::Up || direction == Direction::Down {
                     if !self.attempt_move_part2(&next_position, direction, false, true) {
-                        // println!("Can't move box (left)");
                         false
                     } else {
                         let (x, y) = next_position;
@@ -225,7 +218,6 @@ impl Warehouse {
                         let right_side_can_move =
                             self.attempt_move_part2(&right_next_position, direction, false, true);
                         if right_side_can_move {
-                            // skip_moving = true;
                             self.attempt_move_part2(&next_position, direction, false, skip_moving)
                                 && self.attempt_move_part2(
                                     &right_next_position,

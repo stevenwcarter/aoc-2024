@@ -21,7 +21,7 @@ fn parse_input(input: &str) -> IResult<&str, Vec<(Coord, Coord, Coord)>> {
 }
 
 // originally solved part 1 with an iterative approach.. that certainly
-// didn't work for part 2. Algebra to the rescue!
+// didn't work for part 2. Linear algebra to the rescue!
 fn solve_machine(a: Coord, b: Coord, p: Coord) -> Option<i64> {
     let (ax, ay) = a;
     let (bx, by) = b;
@@ -36,6 +36,7 @@ fn solve_machine(a: Coord, b: Coord, p: Coord) -> Option<i64> {
     let numerator = bx * py - by * px;
     if numerator % denominator != 0 {
         // equations don't align to discrete button presses
+        // (can't press a button 0.25)
         return None;
     }
 
@@ -47,6 +48,7 @@ fn solve_machine(a: Coord, b: Coord, p: Coord) -> Option<i64> {
         return None;
     }
 
+    // x costs 3 tokens
     Some(x * 3 + y)
 }
 
