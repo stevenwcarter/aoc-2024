@@ -1,10 +1,16 @@
 use nom::{
-    character::complete::{space1, u32},
-    multi::separated_list1,
+    character::complete::{newline, space1, u32},
+    combinator::opt,
+    multi::{many1, separated_list1},
+    sequence::terminated,
     IResult,
 };
 
 advent_of_code::solution!(2);
+
+fn parse_input(input: &str) -> IResult<&str, Vec<Vec<u32>>> {
+    many1(terminated(parse_line, opt(newline)))(input)
+}
 
 pub fn parse_line(input: &str) -> IResult<&str, Vec<u32>> {
     separated_list1(space1, u32)(input)
@@ -61,9 +67,10 @@ fn slice_without_nth(vec: &[u32], n: usize) -> Vec<u32> {
 
 pub fn part_one(input: &str) -> Option<u32> {
     Some(
-        input
-            .lines()
-            .map(|l| parse_line(l).unwrap().1)
+        parse_input(input)
+            .unwrap()
+            .1
+            .iter()
             .filter(|l| is_safe(l))
             .count() as u32,
     )
@@ -71,9 +78,10 @@ pub fn part_one(input: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     Some(
-        input
-            .lines()
-            .map(|l| parse_line(l).unwrap().1)
+        parse_input(input)
+            .unwrap()
+            .1
+            .iter()
             .filter(|l| is_safe_with_dampening(l))
             .count() as u32,
     )
