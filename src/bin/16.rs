@@ -292,8 +292,6 @@ pub fn part_two(input: &str) -> Option<u32> {
     });
 
     let path_count = visited.len();
-    assert!(path_count < 584);
-    assert!(path_count > 485);
     Some(path_count as u32)
 }
 
