@@ -1,4 +1,4 @@
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use rayon::prelude::*;
 
 advent_of_code::solution!(6);
@@ -8,7 +8,7 @@ pub enum SquareType {
     Clear,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Direction {
     Up,
     Right,
@@ -36,6 +36,7 @@ pub struct State {
     pub guard_pos: Coord,
     pub guard_facing: Direction,
     pub visited: HashMap<Coord, bool>,
+    pub visited_obstacles: HashSet<(Coord, Direction)>,
     pub steps: usize,
 }
 
@@ -63,6 +64,7 @@ impl State {
             guard_pos: guard_pos.unwrap(),
             guard_facing: Direction::Up,
             visited: HashMap::new(),
+            visited_obstacles: HashSet::new(),
             steps: 0,
         }
     }
@@ -131,6 +133,38 @@ impl State {
 
         true
     }
+    pub fn step2(&mut self) -> bool {
+        // self.steps += 1;
+        // if self.steps > MAX_ITERS {
+        //     println!("Breaking from max iters");
+        //     return false;
+        // }
+        self.visited.entry(self.guard_pos).or_insert(true);
+        let next_block = self.next_block();
+        let next_block_type = self.next_block_type();
+        if next_block.is_none() || next_block_type.is_none() {
+            return false;
+        }
+        let next_block_type = next_block_type.unwrap();
+        let next_block = next_block.unwrap();
+        match next_block_type {
+            SquareType::Clear => {
+                self.guard_pos = next_block;
+            }
+            SquareType::Obstacle => {
+                if !self
+                    .visited_obstacles
+                    .insert((self.guard_pos, self.guard_facing))
+                {
+                    return false;
+                } else {
+                    self.turn();
+                }
+            }
+        }
+
+        true
+    }
 
     pub fn count_visited(&self) -> usize {
         self.visited.iter().filter(|(_, val)| **val).count()
@@ -161,7 +195,7 @@ pub fn part_two(input: &str) -> Option<usize> {
         .filter(|coord| {
             let mut state = state.clone();
             *state.grid.entry(**coord).or_insert(SquareType::Obstacle) = SquareType::Obstacle;
-            while state.step() {}
+            while state.step2() {}
 
             state.steps > MAX_ITERS
         })
