@@ -134,11 +134,10 @@ impl State {
         true
     }
     pub fn step2(&mut self) -> bool {
-        // self.steps += 1;
-        // if self.steps > MAX_ITERS {
-        //     println!("Breaking from max iters");
-        //     return false;
-        // }
+        self.steps += 1;
+        if self.steps > MAX_ITERS {
+            return false;
+        }
         self.visited.entry(self.guard_pos).or_insert(true);
         let next_block = self.next_block();
         let next_block_type = self.next_block_type();
@@ -152,14 +151,14 @@ impl State {
                 self.guard_pos = next_block;
             }
             SquareType::Obstacle => {
-                if !self
-                    .visited_obstacles
-                    .insert((self.guard_pos, self.guard_facing))
-                {
-                    return false;
-                } else {
-                    self.turn();
-                }
+                // if !self
+                //     .visited_obstacles
+                //     .insert((self.guard_pos, self.guard_facing))
+                // {
+                //     return false;
+                // } else {
+                self.turn();
+                // }
             }
         }
 
@@ -214,9 +213,9 @@ mod tests {
         assert_eq!(result, Some(41));
     }
 
-    // #[test]
-    // fn test_part_two() {
-    //     let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-    //     assert_eq!(result, Some(6));
-    // }
+    #[test]
+    fn test_part_two() {
+        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
+        assert_eq!(result, Some(6));
+    }
 }
