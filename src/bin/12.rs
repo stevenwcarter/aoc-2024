@@ -5,25 +5,21 @@ use hashbrown::{HashMap, HashSet};
 use rayon::prelude::*;
 advent_of_code::solution!(12);
 
+fn grid_contains(grid: &HashSet<Point>, point: Option<Point>) -> bool {
+    point.is_some() && grid.contains(&point.unwrap())
+}
+
 fn count_corners(grid: &HashSet<Point>) -> usize {
     let mut edge_count = 0;
     for &pt in grid {
-        let up = pt.up(None);
-        let down = pt.down(None);
-        let left = pt.left(None);
-        let right = pt.right(None);
-        let up_right = pt.up_right(None, None);
-        let up_left = pt.up_left(None, None);
-        let down_right = pt.down_right(None, None);
-        let down_left = pt.down_left(None, None);
-        let up = up.is_some() && grid.contains(&up.unwrap());
-        let down = down.is_some() && grid.contains(&down.unwrap());
-        let left = left.is_some() && grid.contains(&left.unwrap());
-        let right = right.is_some() && grid.contains(&right.unwrap());
-        let up_left = up_left.is_some() && grid.contains(&up_left.unwrap());
-        let up_right = up_right.is_some() && grid.contains(&up_right.unwrap());
-        let down_left = down_left.is_some() && grid.contains(&down_left.unwrap());
-        let down_right = down_right.is_some() && grid.contains(&down_right.unwrap());
+        let up = grid_contains(grid, pt.up(None));
+        let down = grid_contains(grid, pt.down(None));
+        let left = grid_contains(grid, pt.left(None));
+        let right = grid_contains(grid, pt.right(None));
+        let up_right = grid_contains(grid, pt.up_right(None, None));
+        let up_left = grid_contains(grid, pt.up_left(None, None));
+        let down_right = grid_contains(grid, pt.down_right(None, None));
+        let down_left = grid_contains(grid, pt.down_left(None, None));
 
         if !up && !right || up && right && !up_right {
             edge_count += 1;
@@ -62,51 +58,46 @@ impl Garden {
         }
     }
 
-    pub fn find_neighbor_count(&self, point: Point, ch: &char) -> usize {
-        let mut neighbor_count = 0;
-        let (x, y) = (point.x as usize, point.y as usize);
-        if x == 0 || &self.grid[y][x - 1] != ch {
-            neighbor_count += 1;
-        }
-        if y == 0 || &self.grid[y - 1][x] != ch {
-            neighbor_count += 1;
-        }
-        if x >= self.width - 1 || &self.grid[y][x + 1] != ch {
-            neighbor_count += 1;
-        }
-        if y >= self.height - 1 || &self.grid[y + 1][x] != ch {
-            neighbor_count += 1;
-        }
+    fn value_at_point(&self, point: &Point) -> char {
+        self.grid[point.y as usize][point.x as usize]
+    }
+
+    pub fn find_neighbor_count(&self, point: &Point, ch: &char) -> usize {
+        let neighbors = self.udlr(point);
+
+        // If any neighbors are missing due to being on the edge of the grid,
+        // they need to be re-added to the count
+        let neighbor_count = 4 - neighbors.len();
 
         neighbor_count
+            + neighbors
+                .iter()
+                .map(|pt| self.value_at_point(pt))
+                .filter(|ch_val| ch_val != ch)
+                .count()
+    }
+
+    pub fn udlr(&self, point: &Point) -> Vec<Point> {
+        point.udlr([0u32, self.height as u32, 0, self.width as u32])
     }
 
     pub fn find_neighbors(
         &self,
-        x: usize,
-        y: usize,
+        point: &Point,
         ch: &char,
         visited: &mut HashMap<Point, bool>,
     ) -> HashSet<Point> {
         let mut neighbors = HashSet::new();
-        let mut stack: Vec<Point> = vec![(x, y).into()];
-        visited.insert((x, y).into(), true);
+        let mut stack: Vec<Point> = vec![*point];
+        visited.insert(*point, true);
 
         while let Some(point) = stack.pop() {
             neighbors.insert(point);
 
-            let directions = [
-                point.up(None),
-                point.right(Some(self.width as u32)),
-                point.down(Some(self.height as u32)),
-                point.left(None),
-            ];
-
-            directions.iter().filter_map(|pt| *pt).for_each(|point| {
-                let (nx, ny) = (point.x as usize, point.y as usize);
-                if self.grid[ny][nx] == *ch && !*visited.get(&point).unwrap_or(&false) {
-                    stack.push(point);
-                    visited.insert(point, true);
+            self.udlr(&point).iter().for_each(|point| {
+                if self.value_at_point(point) == *ch && !*visited.get(point).unwrap_or(&false) {
+                    stack.push(*point);
+                    visited.insert(*point, true);
                 }
             });
         }
@@ -120,8 +111,9 @@ impl Garden {
 
         for (y, row) in self.grid.iter().enumerate() {
             for (x, ch) in row.iter().enumerate() {
-                if !visited.get(&Point::from((x, y))).unwrap_or(&false) {
-                    let neighbors = self.find_neighbors(x, y, ch, &mut visited);
+                let point = Point::from((x, y));
+                if !visited.get(&point).unwrap_or(&false) {
+                    let neighbors = self.find_neighbors(&point, ch, &mut visited);
 
                     // find area
                     let area = neighbors.len();
@@ -132,7 +124,7 @@ impl Garden {
                     } else {
                         neighbors
                             .iter()
-                            .map(|pt| self.find_neighbor_count(*pt, ch))
+                            .map(|pt| self.find_neighbor_count(pt, ch))
                             .sum::<usize>()
                     };
 

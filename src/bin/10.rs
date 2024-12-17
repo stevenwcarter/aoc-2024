@@ -1,3 +1,4 @@
+use advent_of_code::Point;
 use hashbrown::HashSet;
 
 advent_of_code::solution!(10);
@@ -30,7 +31,11 @@ impl TopoMap {
         }
     }
 
-    pub fn possible_trailheads(&self) -> Vec<(usize, usize)> {
+    fn value_at_point(&self, point: &Point) -> u8 {
+        self.grid[point.y as usize][point.x as usize]
+    }
+
+    pub fn possible_trailheads(&self) -> Vec<Point> {
         self.grid
             .iter()
             .enumerate()
@@ -38,44 +43,28 @@ impl TopoMap {
                 row.iter()
                     .enumerate()
                     .filter(|(_, d)| **d == 0)
-                    .map(|(x, _)| (x, y))
-                    .collect::<Vec<(usize, usize)>>()
+                    .map(|(x, _)| Point::from((x, y)))
+                    .collect::<Vec<Point>>()
             })
             .collect()
     }
 
-    pub fn find_paths_from_coord(
-        &self,
-        coord: (usize, usize),
-        next_val: u8,
-    ) -> Vec<(usize, usize)> {
-        let (x, y) = coord;
-
-        let mut coords: Vec<(usize, usize)> = Vec::new();
-        if x > 0 && self.grid[y][x - 1] == next_val {
-            coords.push((x - 1, y));
-        }
-        if y > 0 && self.grid[y - 1][x] == next_val {
-            coords.push((x, y - 1));
-        }
-        if y < self.height - 1 && self.grid[y + 1][x] == next_val {
-            coords.push((x, y + 1));
-        }
-        if x < self.width - 1 && self.grid[y][x + 1] == next_val {
-            coords.push((x + 1, y));
-        }
-
-        coords
+    pub fn find_paths_from_coord(&self, coord: Point, next_val: u8) -> Vec<Point> {
+        coord
+            .udlr([0, self.height as u32, 0, self.width as u32])
+            .into_iter()
+            .filter(|pt| self.value_at_point(pt) == next_val)
+            .collect()
     }
 
-    pub fn follow_trail(&self, coord: (usize, usize), next_val: u8) -> u32 {
+    pub fn follow_trail(&self, coord: Point, next_val: u8) -> u32 {
         self.find_paths_from_coord(coord, next_val)
-            .iter()
-            .map(|(x, y)| {
+            .into_iter()
+            .map(|coord| {
                 if next_val == 9 {
                     1
                 } else {
-                    self.follow_trail((*x, *y), next_val + 1)
+                    self.follow_trail(coord, next_val + 1)
                 }
             })
             .sum()
@@ -90,43 +79,15 @@ impl TopoMap {
                 .sum(),
         )
     }
-    pub fn find_paths_from_coord_part1(
-        &self,
-        coord: (usize, usize),
-        next_val: u8,
-    ) -> Vec<(usize, usize)> {
-        let (x, y) = coord;
 
-        let mut coords: Vec<(usize, usize)> = Vec::new();
-        if x > 0 && self.grid[y][x - 1] == next_val {
-            coords.push((x - 1, y));
-        }
-        if y > 0 && self.grid[y - 1][x] == next_val {
-            coords.push((x, y - 1));
-        }
-        if y < self.height - 1 && self.grid[y + 1][x] == next_val {
-            coords.push((x, y + 1));
-        }
-        if x < self.width - 1 && self.grid[y][x + 1] == next_val {
-            coords.push((x + 1, y));
-        }
-
-        coords
-    }
-
-    pub fn follow_trail_part1(
-        &self,
-        coord: (usize, usize),
-        next_val: u8,
-        result: &mut HashSet<(usize, usize)>,
-    ) {
-        self.find_paths_from_coord_part1(coord, next_val)
-            .iter()
-            .for_each(|(x, y)| {
+    pub fn follow_trail_part1(&self, coord: Point, next_val: u8, result: &mut HashSet<Point>) {
+        self.find_paths_from_coord(coord, next_val)
+            .into_iter()
+            .for_each(|point| {
                 if next_val == 9 {
-                    result.insert((*x, *y));
+                    result.insert(point);
                 } else {
-                    self.follow_trail_part1((*x, *y), next_val + 1, result);
+                    self.follow_trail_part1(point, next_val + 1, result);
                 }
             });
     }
@@ -137,7 +98,7 @@ impl TopoMap {
             possible_trailheads
                 .iter()
                 .map(|coord| {
-                    let mut result: HashSet<(usize, usize)> = HashSet::new();
+                    let mut result: HashSet<Point> = HashSet::new();
                     self.follow_trail_part1(*coord, 1, &mut result);
 
                     result.len()
