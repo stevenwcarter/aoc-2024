@@ -73,6 +73,8 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(quadrants.iter().map(|(_, v)| v).product())
 }
 
+// steps the robots immediately to their final offset, then finds the remainder
+// to align with the position they would have had after teleportation.
 fn step_robot(
     ((px, py), (vx, vy)): &RobotPositionsAndVelocity,
     steps: i64,

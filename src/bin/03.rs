@@ -29,6 +29,22 @@ fn parse_dont(input: &str) -> IResult<&str, ()> {
     Ok((input, ()))
 }
 
+fn process_instructions_1(input: &str, is_part_1: bool) -> u32 {
+    let mut input = input;
+    let mut total = 0;
+
+    while !input.is_empty() {
+        if let Ok((remaining, result)) = parse_mul(input) {
+            total += result;
+            input = remaining;
+            continue;
+        }
+
+        input = &input[1..];
+    }
+
+    total
+}
 fn process_instructions(input: &str, is_part_1: bool) -> u32 {
     let mut input = input;
     let mut total = 0;

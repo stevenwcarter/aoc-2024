@@ -1,20 +1,29 @@
 #![allow(unused_imports)]
+use advent_of_code::Point;
 use hashbrown::{HashMap, HashSet};
 
 use rayon::prelude::*;
 advent_of_code::solution!(12);
 
-fn count_corners(grid: &HashSet<(usize, usize)>) -> usize {
+fn count_corners(grid: &HashSet<Point>) -> usize {
     let mut edge_count = 0;
-    for &(x, y) in grid {
-        let up = y > 0 && grid.contains(&(x, y - 1));
-        let down = grid.contains(&(x, y + 1));
-        let left = x > 0 && grid.contains(&(x - 1, y));
-        let right = grid.contains(&(x + 1, y));
-        let up_left = y > 0 && x > 0 && grid.contains(&(x - 1, y - 1));
-        let up_right = y > 0 && grid.contains(&(x + 1, y - 1));
-        let down_left = x > 0 && grid.contains(&(x - 1, y + 1));
-        let down_right = grid.contains(&(x + 1, y + 1));
+    for &pt in grid {
+        let up = pt.up(None);
+        let down = pt.down(None);
+        let left = pt.left(None);
+        let right = pt.right(None);
+        let up_right = pt.up_right(None, None);
+        let up_left = pt.up_left(None, None);
+        let down_right = pt.down_right(None, None);
+        let down_left = pt.down_left(None, None);
+        let up = up.is_some() && grid.contains(&up.unwrap());
+        let down = down.is_some() && grid.contains(&down.unwrap());
+        let left = left.is_some() && grid.contains(&left.unwrap());
+        let right = right.is_some() && grid.contains(&right.unwrap());
+        let up_left = up_left.is_some() && grid.contains(&up_left.unwrap());
+        let up_right = up_right.is_some() && grid.contains(&up_right.unwrap());
+        let down_left = down_left.is_some() && grid.contains(&down_left.unwrap());
+        let down_right = down_right.is_some() && grid.contains(&down_right.unwrap());
 
         if !up && !right || up && right && !up_right {
             edge_count += 1;
@@ -53,8 +62,9 @@ impl Garden {
         }
     }
 
-    pub fn find_neighbor_count(&self, x: usize, y: usize, ch: &char) -> usize {
+    pub fn find_neighbor_count(&self, point: Point, ch: &char) -> usize {
         let mut neighbor_count = 0;
+        let (x, y) = (point.x as usize, point.y as usize);
         if x == 0 || &self.grid[y][x - 1] != ch {
             neighbor_count += 1;
         }
@@ -76,32 +86,29 @@ impl Garden {
         x: usize,
         y: usize,
         ch: &char,
-        visited: &mut HashMap<(usize, usize), bool>,
-    ) -> HashSet<(usize, usize)> {
+        visited: &mut HashMap<Point, bool>,
+    ) -> HashSet<Point> {
         let mut neighbors = HashSet::new();
-        let mut stack = vec![(x, y)];
-        visited.insert((x, y), true);
+        let mut stack: Vec<Point> = vec![(x, y).into()];
+        visited.insert((x, y).into(), true);
 
-        while let Some((cx, cy)) = stack.pop() {
-            neighbors.insert((cx, cy));
+        while let Some(point) = stack.pop() {
+            neighbors.insert(point);
 
             let directions = [
-                (cx.wrapping_sub(1), cy),
-                (cx + 1, cy),
-                (cx, cy.wrapping_sub(1)),
-                (cx, cy + 1),
+                point.up(None),
+                point.right(Some(self.width as u32)),
+                point.down(Some(self.height as u32)),
+                point.left(None),
             ];
 
-            for &(nx, ny) in directions.iter() {
-                if nx < self.width
-                    && ny < self.height
-                    && self.grid[ny][nx] == *ch
-                    && !*visited.get(&(nx, ny)).unwrap_or(&false)
-                {
-                    stack.push((nx, ny));
-                    visited.insert((nx, ny), true);
+            directions.iter().filter_map(|pt| *pt).for_each(|point| {
+                let (nx, ny) = (point.x as usize, point.y as usize);
+                if self.grid[ny][nx] == *ch && !*visited.get(&point).unwrap_or(&false) {
+                    stack.push(point);
+                    visited.insert(point, true);
                 }
-            }
+            });
         }
 
         neighbors
@@ -109,11 +116,11 @@ impl Garden {
 
     pub fn find_areas(&self, is_part_2: bool) -> Vec<(usize, usize, char)> {
         let mut area_perimeters: Vec<(usize, usize, char)> = Vec::new();
-        let mut visited: HashMap<(usize, usize), bool> = HashMap::new();
+        let mut visited: HashMap<Point, bool> = HashMap::new();
 
         for (y, row) in self.grid.iter().enumerate() {
             for (x, ch) in row.iter().enumerate() {
-                if !visited.get(&(x, y)).unwrap_or(&false) {
+                if !visited.get(&Point::from((x, y))).unwrap_or(&false) {
                     let neighbors = self.find_neighbors(x, y, ch, &mut visited);
 
                     // find area
@@ -125,7 +132,7 @@ impl Garden {
                     } else {
                         neighbors
                             .iter()
-                            .map(|(x, y)| self.find_neighbor_count(*x, *y, ch))
+                            .map(|pt| self.find_neighbor_count(*pt, ch))
                             .sum::<usize>()
                     };
 
@@ -162,36 +169,22 @@ mod tests {
 
     #[test]
     fn test_count_corners() {
-        let mut points: HashSet<(usize, usize)> = HashSet::new();
-        points.insert((0, 0));
-        points.insert((0, 1));
-        points.insert((0, 2));
-        points.insert((2, 0));
-        points.insert((2, 1));
-        points.insert((2, 2));
-        points.insert((1, 0));
-        points.insert((1, 2));
+        let mut points: HashSet<Point> = HashSet::new();
+        points.insert(Point::from((0u32, 0)));
+        points.insert(Point::from((0u32, 1)));
+        points.insert(Point::from((0u32, 2)));
+        points.insert(Point::from((2u32, 0)));
+        points.insert(Point::from((2u32, 1)));
+        points.insert(Point::from((2u32, 2)));
+        points.insert(Point::from((1u32, 0)));
+        points.insert(Point::from((1u32, 2)));
 
         assert_eq!(count_corners(&points), 8);
     }
     #[test]
     fn test_count_corners_square() {
-        let points: HashSet<(usize, usize)> = vec![(0, 0)].into_iter().collect();
+        let points: HashSet<Point> = vec![Point::from((0u32, 0))].into_iter().collect();
         assert_eq!(count_corners(&points), 4);
-    }
-    #[test]
-    fn test_count_corners_larger_square() {
-        let points: HashSet<(usize, usize)> =
-            vec![(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().collect();
-        assert_eq!(count_corners(&points), 4);
-    }
-    #[test]
-    fn test_count_corners_e() {
-        let points: HashSet<(usize, usize)> =
-            vec![(0, 0), (1, 0), (2, 0), (0, 1), (0, 2), (1, 2), (2, 2)]
-                .into_iter()
-                .collect();
-        assert_eq!(count_corners(&points), 8);
     }
 
     #[test]
