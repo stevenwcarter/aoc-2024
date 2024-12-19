@@ -19,13 +19,7 @@ fn has_valid_match(towels: &[&str], pattern: &str) -> bool {
     towels
         .iter()
         .filter(|t| pattern.starts_with(*t))
-        .any(|prefix| {
-            if pattern == *prefix {
-                true
-            } else {
-                has_valid_match(towels, &pattern[prefix.len()..])
-            }
-        })
+        .any(|prefix| pattern == *prefix || has_valid_match(towels, &pattern[prefix.len()..]))
 }
 
 fn count_valid_match(towels: &[&str], pattern: &str, cache: &mut HashMap<String, usize>) -> usize {
@@ -38,7 +32,7 @@ fn count_valid_match(towels: &[&str], pattern: &str, cache: &mut HashMap<String,
 
     let count = towels
         .iter()
-        .filter(|t| pattern.starts_with(**t))
+        .filter(|&&t| pattern.starts_with(t))
         .map(|t| count_valid_match(towels, &pattern[t.len()..], cache))
         .sum();
 

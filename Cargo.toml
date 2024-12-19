@@ -26,18 +26,17 @@ test_lib = []
 [dependencies]
 cached = "0.54.0"
 
-# Template dependencies
-chrono = { version = "0.4.38", optional = true }
-dashmap = { version = "6.1.0", features = ["rayon"] }
-dhat = { version = "0.3.3", optional = true }
+# Solution dependencies
 hashbrown = { version = "0.15.2", features = ["rayon"] }
 itertools = "0.13.0"
 nom = "7.1.3"
 num = "0.4.3"
 pathfinding = "4.12.0"
-pico-args = "0.5.0"
 rayon = "1.10.0"
 regex = "1.11.1"
-tinyjson = "2.5.1"
 
-# Solution dependencies
+# Template dependencies
+chrono = { version = "0.4.38", optional = true }
+dhat = { version = "0.3.3", optional = true }
+pico-args = "0.5.0"
+tinyjson = "2.5.1"
