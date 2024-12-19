@@ -16,24 +16,16 @@ fn parse_input(input: &str) -> (Vec<&str>, Vec<&str>) {
 }
 
 fn has_valid_match(towels: &[&str], pattern: &str) -> bool {
-    let valid_prefixes: Vec<&str> = towels
+    towels
         .iter()
-        .filter_map(|t| {
-            if pattern.starts_with(*t) {
-                Some(*t)
+        .filter(|t| pattern.starts_with(*t))
+        .any(|prefix| {
+            if pattern == *prefix {
+                true
             } else {
-                None
+                has_valid_match(towels, &pattern[prefix.len()..])
             }
         })
-        .collect();
-
-    valid_prefixes.iter().any(|prefix| {
-        if pattern == *prefix {
-            true
-        } else {
-            has_valid_match(towels, &pattern[prefix.len()..])
-        }
-    })
 }
 
 fn count_valid_match(towels: &[&str], pattern: &str, cache: &mut HashMap<String, usize>) -> usize {
@@ -54,13 +46,12 @@ fn count_valid_match(towels: &[&str], pattern: &str, cache: &mut HashMap<String,
     count
 }
 
-// TODO: This runs slower than part 2, update to be faster
 pub fn part_one(input: &str) -> Option<usize> {
     let (towels, patterns) = parse_input(input);
 
     Some(
         patterns
-            .iter()
+            .par_iter()
             .filter(|p| has_valid_match(&towels, p))
             .count(),
     )
