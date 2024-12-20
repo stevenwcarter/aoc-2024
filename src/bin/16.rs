@@ -233,14 +233,15 @@ pub fn part_one(input: &str) -> Option<u32> {
     let maze = Maze::parse_input(input);
     let start: (Point, CardinalDirection) = (maze.position, maze.facing);
 
-    let result = pathfinding::directed::dijkstra::dijkstra(
-        &start,
-        |(position, facing)| maze.successors(position, facing),
-        |&(position, _)| position == maze.goal,
-    );
-
-    // println!("{:#?}", result);
-    Some(result.unwrap().1)
+    Some(
+        pathfinding::directed::dijkstra::dijkstra(
+            &start,
+            |(position, facing)| maze.successors(position, facing),
+            |&(position, _)| position == maze.goal,
+        )
+        .unwrap()
+        .1,
+    )
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
