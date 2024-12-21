@@ -39,13 +39,18 @@ impl Point {
         self.down_n(1, range)
     }
     pub fn udlr(&self, udlr: [u32; 4]) -> Vec<Self> {
-        let directions = [
+        self.udlr_unfiltered(udlr)
+            .iter()
+            .filter_map(|p| *p)
+            .collect()
+    }
+    pub fn udlr_unfiltered(&self, udlr: [u32; 4]) -> [Option<Self>; 4] {
+        [
             self.up(Some(udlr[0])),
             self.down(Some(udlr[1])),
             self.left(Some(udlr[2])),
             self.right(Some(udlr[3])),
-        ];
-        directions.iter().filter_map(|p| *p).collect()
+        ]
     }
     pub fn up_n(&self, offset: u32, range: Option<u32>) -> Option<Self> {
         if self.y >= offset && self.y - offset >= range.unwrap_or(0) {
