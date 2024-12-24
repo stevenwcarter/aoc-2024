@@ -9,10 +9,18 @@ use linked_hash_set::LinkedHashSet;
 /// This didn't end up being very ergonomic. Probably should have kept the operation
 /// in a separate value in a struct
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Operation<'a> {
-    XOR(&'a str, &'a str, &'a str),
-    OR(&'a str, &'a str, &'a str),
-    AND(&'a str, &'a str, &'a str),
+pub enum OperationType {
+    XOR,
+    OR,
+    AND,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Operation<'a> {
+    pub left: &'a str,
+    pub right: &'a str,
+    pub output: &'a str,
+    pub op_type: OperationType,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -61,24 +69,24 @@ impl<'a> Data<'a> {
 
                 let (left, op, right) = (inputs[0], inputs[1], inputs[2]);
 
-                match op {
-                    "AND" => Operation::AND(left, right, output),
-                    "OR" => Operation::OR(left, right, output),
-                    "XOR" => Operation::XOR(left, right, output),
+                let op_type = match op {
+                    "AND" => OperationType::AND,
+                    "OR" => OperationType::OR,
+                    "XOR" => OperationType::XOR,
                     _ => unreachable!("Unknown operations {op}"),
+                };
+                Operation {
+                    left,
+                    right,
+                    output,
+                    op_type,
                 }
             })
             .collect();
 
         // Build a map to make it easier to look up operations for the given output
-        let operation_map: HashMap<&str, Operation> = operations
-            .iter()
-            .map(|o| match o {
-                Operation::XOR(_, _, out) => (*out, *o),
-                Operation::OR(_, _, out) => (*out, *o),
-                Operation::AND(_, _, out) => (*out, *o),
-            })
-            .collect();
+        let operation_map: HashMap<&str, Operation> =
+            operations.iter().map(|o| (o.output, *o)).collect();
 
         Self {
             values,
@@ -91,14 +99,9 @@ impl<'a> Data<'a> {
         let targets: Vec<&str> = self
             .operations
             .iter()
-            .map(|o| match o {
-                Operation::XOR(_, _, o) => o,
-                Operation::OR(_, _, o) => o,
-                Operation::AND(_, _, o) => o,
-            })
+            .map(|o| o.output)
             .filter(|o| o.starts_with("z"))
             .filter(|o| o[1..].parse::<u8>().is_ok())
-            .copied()
             .collect();
 
         for target in targets {
@@ -115,19 +118,20 @@ impl<'a> Data<'a> {
             return Some(*value);
         }
         let operation = *self.operation_map.get(value).expect("No mapping for value");
-        let (left, right, output) = match operation {
-            Operation::XOR(l, r, o) => (l, r, o),
-            Operation::OR(l, r, o) => (l, r, o),
-            Operation::AND(l, r, o) => (l, r, o),
-        };
+        let Operation {
+            left,
+            right,
+            output,
+            op_type,
+        } = operation;
         let left = self.get_value(left);
         let right = self.get_value(right);
         match (left, right) {
             (Some(left), Some(right)) => {
-                let result = match operation {
-                    Operation::XOR(_, _, _) => left != right,
-                    Operation::OR(_, _, _) => left || right,
-                    Operation::AND(_, _, _) => left && right,
+                let result = match op_type {
+                    OperationType::XOR => left != right,
+                    OperationType::OR => left || right,
+                    OperationType::AND => left && right,
                 };
                 self.values.insert(output, result);
                 Some(result)
@@ -141,11 +145,7 @@ impl<'a> Data<'a> {
         let mut targets: Vec<u8> = self
             .operations
             .iter()
-            .map(|o| match o {
-                Operation::XOR(_, _, o) => o,
-                Operation::OR(_, _, o) => o,
-                Operation::AND(_, _, o) => o,
-            })
+            .map(|o| o.output)
             .filter(|o| o.starts_with("z"))
             .filter_map(|o| o[1..].parse::<u8>().ok())
             .collect();
@@ -205,47 +205,24 @@ impl<'a> Data<'a> {
 
         while !queue.is_empty() {
             let target = queue.pop_front().unwrap();
-            match self.operation_map.get(target) {
-                Some(Operation::XOR(l, r, _)) => {
-                    let mut s: Vec<&str> = Vec::new();
-                    if seen.insert(l) {
-                        s.push(l);
-                    }
-                    if seen.insert(r) {
-                        s.push(r);
-                    }
-                    s.sort();
-                    s.iter().for_each(|v| {
-                        queue.push_back(v);
-                    });
+            if let Some(o) = self.operation_map.get(target) {
+                let Operation {
+                    left,
+                    right,
+                    output: _,
+                    op_type: _,
+                } = o;
+                let mut s: Vec<&str> = Vec::new();
+                if seen.insert(left) {
+                    s.push(left);
                 }
-                Some(Operation::OR(l, r, _)) => {
-                    let mut s: Vec<&str> = Vec::new();
-                    if seen.insert(l) {
-                        s.push(l);
-                    }
-                    if seen.insert(r) {
-                        s.push(r);
-                    }
-                    s.sort();
-                    s.iter().for_each(|v| {
-                        queue.push_back(v);
-                    });
+                if seen.insert(right) {
+                    s.push(right);
                 }
-                Some(Operation::AND(l, r, _)) => {
-                    let mut s: Vec<&str> = Vec::new();
-                    if seen.insert(l) {
-                        s.push(l);
-                    }
-                    if seen.insert(r) {
-                        s.push(r);
-                    }
-                    s.sort();
-                    s.iter().for_each(|v| {
-                        queue.push_back(v);
-                    });
-                }
-                _ => {}
+                s.sort();
+                s.iter().for_each(|v| {
+                    queue.push_back(v);
+                });
             };
         }
 
