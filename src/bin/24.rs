@@ -6,8 +6,6 @@ use hashbrown::HashMap;
 use itertools::Itertools;
 use linked_hash_set::LinkedHashSet;
 
-/// This didn't end up being very ergonomic. Probably should have kept the operation
-/// in a separate value in a struct
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OperationType {
     XOR,
