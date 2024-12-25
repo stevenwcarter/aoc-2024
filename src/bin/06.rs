@@ -39,12 +39,22 @@ pub struct State {
     pub visited: HashMap<Coord, bool>,
     pub visited_obstacles: HashSet<(Coord, Direction)>,
     pub steps: usize,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl State {
     pub fn new_from_input(input: &str) -> Self {
         let mut guard_pos: Option<Coord> = None;
         let mut grid: HashMap<Coord, SquareType> = HashMap::new();
+        let height = input.lines().collect::<Vec<_>>().len();
+        let width = input
+            .lines()
+            .next()
+            .unwrap()
+            .chars()
+            .collect::<Vec<_>>()
+            .len();
         for (y, l) in input.lines().enumerate() {
             for (x, c) in l.chars().enumerate() {
                 let square_type = match c {
@@ -67,6 +77,8 @@ impl State {
             visited: HashMap::new(),
             visited_obstacles: HashSet::new(),
             steps: 0,
+            width,
+            height,
         }
     }
 
@@ -104,11 +116,6 @@ impl State {
         let current_pos = self.guard_pos;
         match self.guard_facing {
             Direction::Up => {
-                // if current_pos.1 == 0 {
-                //     None
-                // } else {
-                //     Some(Coord(current_pos.0, current_pos.1 - 1))
-                // }
                 let mut updated_guard_pos = None;
                 let next_obstacle_y = (0..current_pos.1)
                     .rev()
@@ -137,27 +144,126 @@ impl State {
                             return None;
                         }
 
-                        // println!("Next result for ({},{}) : {:?}", current_pos.0, y2, result2);
+                        Some(Coord(current_pos.0, y2))
+                    })
+                    .next();
+
+                if let Some(updated_position) = updated_guard_pos {
+                    self.guard_pos = updated_position;
+                }
+                next_obstacle_y
+            }
+            Direction::Right => {
+                let mut updated_guard_pos = None;
+                let next_obstacle_x = (current_pos.0 + 1..self.width)
+                    .map(Some)
+                    .chain([None])
+                    .tuple_windows()
+                    .filter_map(|(x, x2)| {
+                        x?;
+                        let x = x.unwrap();
+                        if x == 0 {
+                            return None;
+                        }
+                        let result =
+                            self.grid.get(&Coord(x, current_pos.1)) == Some(&SquareType::Obstacle);
+                        if result {
+                            return Some(Coord(x, current_pos.1));
+                        }
+                        x2?;
+                        let x2 = x2.unwrap();
+                        let result2 =
+                            self.grid.get(&Coord(x2, current_pos.1)) == Some(&SquareType::Obstacle);
+
+                        if result2 {
+                            updated_guard_pos = Some(Coord(x, current_pos.1));
+                        } else {
+                            return None;
+                        }
+
+                        Some(Coord(x2, current_pos.1))
+                    })
+                    .next();
+
+                if let Some(updated_position) = updated_guard_pos {
+                    self.guard_pos = updated_position;
+                }
+                next_obstacle_x
+            }
+            Direction::Down => {
+                let mut updated_guard_pos = None;
+                let next_obstacle_y = (current_pos.1 + 1..self.height)
+                    .map(Some)
+                    .chain([None])
+                    .tuple_windows()
+                    .filter_map(|(y, y2)| {
+                        y?;
+                        let y = y.unwrap();
+                        if y == 0 {
+                            return None;
+                        }
+                        let result =
+                            self.grid.get(&Coord(current_pos.0, y)) == Some(&SquareType::Obstacle);
+                        if result {
+                            return Some(Coord(current_pos.0, y));
+                        }
+                        y2?;
+                        let y2 = y2.unwrap();
+                        let result2 =
+                            self.grid.get(&Coord(current_pos.0, y2)) == Some(&SquareType::Obstacle);
+
+                        if result2 {
+                            updated_guard_pos = Some(Coord(current_pos.0, y));
+                        } else {
+                            return None;
+                        }
 
                         Some(Coord(current_pos.0, y2))
                     })
                     .next();
 
-                // println!("Found next obstacle: {:?}", next_obstacle_y);
                 if let Some(updated_position) = updated_guard_pos {
-                    // println!("Moved guard to {:?}", updated_guard_pos);
                     self.guard_pos = updated_position;
                 }
                 next_obstacle_y
             }
-            Direction::Right => Some(Coord(current_pos.0 + 1, current_pos.1)),
-            Direction::Down => Some(Coord(current_pos.0, current_pos.1 + 1)),
             Direction::Left => {
-                if current_pos.0 == 0 {
-                    None
-                } else {
-                    Some(Coord(current_pos.0 - 1, current_pos.1))
+                let mut updated_guard_pos = None;
+                let next_obstacle_x = (0..current_pos.0)
+                    .rev()
+                    .map(Some)
+                    .chain([None])
+                    .tuple_windows()
+                    .filter_map(|(x, x2)| {
+                        x?;
+                        let x = x.unwrap();
+                        if x == 0 {
+                            return None;
+                        }
+                        let result =
+                            self.grid.get(&Coord(x, current_pos.1)) == Some(&SquareType::Obstacle);
+                        if result {
+                            return Some(Coord(x, current_pos.1));
+                        }
+                        x2?;
+                        let x2 = x2.unwrap();
+                        let result2 =
+                            self.grid.get(&Coord(x2, current_pos.1)) == Some(&SquareType::Obstacle);
+
+                        if result2 {
+                            updated_guard_pos = Some(Coord(x, current_pos.1));
+                        } else {
+                            return None;
+                        }
+
+                        Some(Coord(x2, current_pos.1))
+                    })
+                    .next();
+
+                if let Some(updated_position) = updated_guard_pos {
+                    self.guard_pos = updated_position;
                 }
+                next_obstacle_x
             }
         }
     }
