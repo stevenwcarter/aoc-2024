@@ -1,4 +1,5 @@
 use hashbrown::{HashMap, HashSet};
+use itertools::Itertools;
 use rayon::prelude::*;
 
 advent_of_code::solution!(6);
@@ -99,6 +100,67 @@ impl State {
             }
         }
     }
+    fn next_block2(&mut self) -> Option<Coord> {
+        let current_pos = self.guard_pos;
+        match self.guard_facing {
+            Direction::Up => {
+                // if current_pos.1 == 0 {
+                //     None
+                // } else {
+                //     Some(Coord(current_pos.0, current_pos.1 - 1))
+                // }
+                let mut updated_guard_pos = None;
+                let next_obstacle_y = (0..current_pos.1)
+                    .rev()
+                    .map(Some)
+                    .chain([None])
+                    .tuple_windows()
+                    .filter_map(|(y, y2)| {
+                        y?;
+                        let y = y.unwrap();
+                        if y == 0 {
+                            return None;
+                        }
+                        let result =
+                            self.grid.get(&Coord(current_pos.0, y)) == Some(&SquareType::Obstacle);
+                        if result {
+                            return Some(Coord(current_pos.0, y));
+                        }
+                        y2?;
+                        let y2 = y2.unwrap();
+                        let result2 =
+                            self.grid.get(&Coord(current_pos.0, y2)) == Some(&SquareType::Obstacle);
+
+                        if result2 {
+                            updated_guard_pos = Some(Coord(current_pos.0, y));
+                        } else {
+                            return None;
+                        }
+
+                        // println!("Next result for ({},{}) : {:?}", current_pos.0, y2, result2);
+
+                        Some(Coord(current_pos.0, y2))
+                    })
+                    .next();
+
+                // println!("Found next obstacle: {:?}", next_obstacle_y);
+                if let Some(updated_position) = updated_guard_pos {
+                    // println!("Moved guard to {:?}", updated_guard_pos);
+                    self.guard_pos = updated_position;
+                }
+                next_obstacle_y
+            }
+            Direction::Right => Some(Coord(current_pos.0 + 1, current_pos.1)),
+            Direction::Down => Some(Coord(current_pos.0, current_pos.1 + 1)),
+            Direction::Left => {
+                if current_pos.0 == 0 {
+                    None
+                } else {
+                    Some(Coord(current_pos.0 - 1, current_pos.1))
+                }
+            }
+        }
+    }
 
     fn next_block_type(&self) -> Option<&SquareType> {
         let next_pos = self.next_block();
@@ -133,16 +195,17 @@ impl State {
 
         true
     }
-    pub fn step2(&mut self) -> bool {
+    pub fn step2(&mut self) -> (bool, bool) {
         self.steps += 1;
         if self.steps > MAX_ITERS {
-            return false;
+            return (false, false);
         }
+        let next_block = self.next_block2();
         self.visited.entry(self.guard_pos).or_insert(true);
-        let next_block = self.next_block();
         let next_block_type = self.next_block_type();
+        // println!("Next block type: {:?}", next_block_type);
         if next_block.is_none() || next_block_type.is_none() {
-            return false;
+            return (false, false);
         }
         let next_block_type = next_block_type.unwrap();
         let next_block = next_block.unwrap();
@@ -151,18 +214,18 @@ impl State {
                 self.guard_pos = next_block;
             }
             SquareType::Obstacle => {
-                // if !self
-                //     .visited_obstacles
-                //     .insert((self.guard_pos, self.guard_facing))
-                // {
-                //     return false;
-                // } else {
-                self.turn();
-                // }
+                if !self
+                    .visited_obstacles
+                    .insert((self.guard_pos, self.guard_facing))
+                {
+                    return (false, true);
+                } else {
+                    self.turn();
+                }
             }
         }
 
-        true
+        (true, false)
     }
 
     pub fn count_visited(&self) -> usize {
@@ -194,9 +257,12 @@ pub fn part_two(input: &str) -> Option<usize> {
         .filter(|coord| {
             let mut state = state.clone();
             *state.grid.entry(**coord).or_insert(SquareType::Obstacle) = SquareType::Obstacle;
-            while state.step2() {}
-
-            state.steps > MAX_ITERS
+            loop {
+                let (keep_going, is_loop) = state.step2();
+                if !keep_going {
+                    return is_loop;
+                }
+            }
         })
         .count();
 

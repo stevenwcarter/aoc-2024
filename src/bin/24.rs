@@ -4,7 +4,6 @@ use std::collections::VecDeque;
 
 use hashbrown::HashMap;
 use itertools::Itertools;
-use linked_hash_set::LinkedHashSet;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum OperationType {
@@ -199,7 +198,7 @@ impl<'a> Data<'a> {
         // output graph for affected wires. Didn't end up using this, but it
         // was helpful to visualize how the progression worked (2 inputs for 0,
         // 6 for 2, 12 for 3, etc.)
-        let mut seen: LinkedHashSet<&str> = LinkedHashSet::new();
+        let mut seen: Vec<&str> = Vec::new();
 
         while !queue.is_empty() {
             let target = queue.pop_front().unwrap();
@@ -211,12 +210,14 @@ impl<'a> Data<'a> {
                     op_type: _,
                 } = o;
                 let mut s: Vec<&str> = Vec::new();
-                if seen.insert(left) {
-                    s.push(left);
-                }
-                if seen.insert(right) {
-                    s.push(right);
-                }
+                seen.push(left);
+                seen.push(right);
+                // if seen.insert(left) {
+                s.push(left);
+                // }
+                // if seen.insert(right) {
+                s.push(right);
+                // }
                 s.sort();
                 s.iter().for_each(|v| {
                     queue.push_back(v);
@@ -285,6 +286,12 @@ pub fn part_two(input: &str) -> Option<String> {
     if !bad_bits.is_empty() {
         println!("Bad bits: {:#?}", bad_bits);
     }
+
+    // (0..3).for_each(|idx| {
+    //     let key = format!("z{:0>2}", idx);
+    //     let wires = data.find_affecting_wires(&key);
+    //     println!("Wires affecting {key}: {:#?}", wires);
+    // });
 
     // once the swaps were found, update this structure to give me the
     // alphabetical sorted list joined by commas
