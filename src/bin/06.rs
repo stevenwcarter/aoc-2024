@@ -20,13 +20,13 @@ pub enum Direction {
 const MAX_ITERS: usize = 6000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Coord(usize, usize);
+pub struct Coord(u8, u8);
 
 impl Coord {
-    pub fn x(&self) -> usize {
+    pub fn x(&self) -> u8 {
         self.0
     }
-    pub fn y(&self) -> usize {
+    pub fn y(&self) -> u8 {
         self.1
     }
 }
@@ -61,12 +61,12 @@ impl State {
                     '.' => SquareType::Clear,
                     '#' => SquareType::Obstacle,
                     '^' => {
-                        guard_pos = Some(Coord(x, y));
+                        guard_pos = Some(Coord(x as u8, y as u8));
                         SquareType::Clear
                     }
                     _ => unreachable!("unknown symbol {:?}", c),
                 };
-                grid.entry(Coord(x, y)).or_insert(square_type);
+                grid.entry(Coord(x as u8, y as u8)).or_insert(square_type);
             }
         }
 
@@ -155,13 +155,13 @@ impl State {
             }
             Direction::Right => {
                 let mut updated_guard_pos = None;
-                let next_obstacle_x = (current_pos.0 + 1..self.width)
+                let next_obstacle_x = (current_pos.0 as usize + 1..self.width)
                     .map(Some)
                     .chain([None])
                     .tuple_windows()
                     .filter_map(|(x, x2)| {
                         x?;
-                        let x = x.unwrap();
+                        let x = x.unwrap() as u8;
                         if x == 0 {
                             return None;
                         }
@@ -171,7 +171,7 @@ impl State {
                             return Some(Coord(x, current_pos.1));
                         }
                         x2?;
-                        let x2 = x2.unwrap();
+                        let x2 = x2.unwrap() as u8;
                         let result2 =
                             self.grid.get(&Coord(x2, current_pos.1)) == Some(&SquareType::Obstacle);
 
@@ -192,13 +192,13 @@ impl State {
             }
             Direction::Down => {
                 let mut updated_guard_pos = None;
-                let next_obstacle_y = (current_pos.1 + 1..self.height)
+                let next_obstacle_y = (current_pos.1 as usize + 1..self.height)
                     .map(Some)
                     .chain([None])
                     .tuple_windows()
                     .filter_map(|(y, y2)| {
                         y?;
-                        let y = y.unwrap();
+                        let y = y.unwrap() as u8;
                         if y == 0 {
                             return None;
                         }
@@ -208,7 +208,7 @@ impl State {
                             return Some(Coord(current_pos.0, y));
                         }
                         y2?;
-                        let y2 = y2.unwrap();
+                        let y2 = y2.unwrap() as u8;
                         let result2 =
                             self.grid.get(&Coord(current_pos.0, y2)) == Some(&SquareType::Obstacle);
 
@@ -301,21 +301,20 @@ impl State {
 
         true
     }
-    pub fn step2(&mut self) -> (bool, bool) {
+    pub fn step2(&mut self) -> Option<bool> {
         self.steps += 1;
         if self.steps > MAX_ITERS {
-            return (false, false);
+            return Some(false);
         }
         let next_block = self.next_block2();
         self.visited.entry(self.guard_pos).or_insert(true);
         let next_block_type = self.next_block_type();
         // println!("Next block type: {:?}", next_block_type);
         if next_block.is_none() || next_block_type.is_none() {
-            return (false, false);
+            return Some(false);
         }
-        let next_block_type = next_block_type.unwrap();
-        let next_block = next_block.unwrap();
-        match next_block_type {
+        let next_block = next_block?;
+        match next_block_type? {
             SquareType::Clear => {
                 self.guard_pos = next_block;
             }
@@ -324,14 +323,14 @@ impl State {
                     .visited_obstacles
                     .insert((self.guard_pos, self.guard_facing))
                 {
-                    return (false, true);
+                    return Some(true);
                 } else {
                     self.turn();
                 }
             }
         }
 
-        (true, false)
+        None
     }
 
     pub fn count_visited(&self) -> usize {
@@ -342,9 +341,8 @@ impl State {
 pub fn part_one(input: &str) -> Option<usize> {
     let mut state = State::new_from_input(input);
     while state.step() {
-        //
+        // loop until it leaves the area
     }
-    // println!("State: {:#?}", state);
     Some(state.count_visited())
 }
 
@@ -364,8 +362,7 @@ pub fn part_two(input: &str) -> Option<usize> {
             let mut state = state.clone();
             *state.grid.entry(**coord).or_insert(SquareType::Obstacle) = SquareType::Obstacle;
             loop {
-                let (keep_going, is_loop) = state.step2();
-                if !keep_going {
+                if let Some(is_loop) = state.step2() {
                     return is_loop;
                 }
             }
