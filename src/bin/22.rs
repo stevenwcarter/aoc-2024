@@ -1,6 +1,7 @@
 advent_of_code::solution!(22);
 use std::sync::{Arc, Mutex};
 
+use dashmap::DashMap;
 use hashbrown::HashMap;
 use itertools::Itertools;
 
@@ -9,11 +10,13 @@ use rayon::prelude::*;
 const ITERATIONS: usize = 2000;
 
 /// bitwise XOR of new number and the original secret
+#[inline(always)]
 fn mix(n: u64, secret: u64) -> u64 {
     n ^ secret
 }
 
 /// Determine modulo of secret to keep it from growing too large
+#[inline(always)]
 fn prune(n: u64) -> u64 {
     n % 16777216
 }
@@ -22,11 +25,11 @@ fn prune(n: u64) -> u64 {
 /// and do it `iters` times.
 fn process(secret: u64, iters: usize) -> u64 {
     let mut n = secret;
-    (0..iters).for_each(|_| {
+    for _ in 0..iters {
         n = prune(mix(n * 64, n));
         n = prune(mix(n / 32, n));
         n = prune(mix(n * 2048, n));
-    });
+    }
 
     n
 }
@@ -75,7 +78,7 @@ fn build_key(a: u8, b: u8, c: u8, d: u8, e: u8) -> u32 {
 /// Find the total number of bananas that are possible given a single sequence of differences
 /// in offered bananas. Never thought I'd type that sentence..
 fn find_best_iter(iters: &[Vec<u8>]) -> Option<u64> {
-    let totals: Arc<Mutex<HashMap<u32, u64>>> = Arc::new(Mutex::new(HashMap::new()));
+    let totals: DashMap<u32, u64> = DashMap::new();
 
     iters.par_iter().for_each(|iter| {
         let mut inner_totals: HashMap<u32, u64> = HashMap::new();
@@ -91,16 +94,13 @@ fn find_best_iter(iters: &[Vec<u8>]) -> Option<u64> {
             });
 
         {
-            let totals = totals.clone();
-            let mut totals = totals.lock().unwrap();
             inner_totals.iter().for_each(|(k, v)| {
                 *totals.entry(*k).or_insert(0) += *v;
             });
         }
     });
 
-    let totals = totals.lock().unwrap();
-    totals.iter().map(|(_, v)| v).copied().max()
+    totals.into_iter().map(|(_, v)| v).max()
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
