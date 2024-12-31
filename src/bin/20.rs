@@ -4,6 +4,13 @@ use std::collections::VecDeque;
 
 // TODO: Clean up this implementation
 
+#[cfg(not(target_env = "msvc"))]
+use jemallocator::Jemalloc;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 #[derive(Debug, Clone, Copy)]
 pub struct Distances(Option<usize>, Option<usize>);
 

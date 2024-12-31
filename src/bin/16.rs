@@ -9,6 +9,13 @@ use std::{cmp::Reverse, collections::BinaryHeap};
 
 advent_of_code::solution!(16);
 
+#[cfg(not(target_env = "msvc"))]
+use jemallocator::Jemalloc;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 pub fn dijkstra<N, C, FN, IN, FS>(
     start: &N,
     mut successors: FN,

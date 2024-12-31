@@ -9,6 +9,13 @@ use rayon::prelude::*;
 
 const ITERATIONS: usize = 2000;
 
+#[cfg(not(target_env = "msvc"))]
+use jemallocator::Jemalloc;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 /// bitwise XOR of new number and the original secret
 #[inline(always)]
 fn mix(n: u64, secret: u64) -> u64 {
