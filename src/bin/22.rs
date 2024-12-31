@@ -1,5 +1,4 @@
 advent_of_code::solution!(22);
-use std::sync::{Arc, Mutex};
 
 use dashmap::DashMap;
 use hashbrown::HashMap;
