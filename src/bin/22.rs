@@ -1,7 +1,7 @@
 advent_of_code::solution!(22);
 
 use dashmap::DashMap;
-use hashbrown::HashMap;
+use hashbrown::HashSet;
 use itertools::Itertools;
 
 use rayon::prelude::*;
@@ -91,19 +91,15 @@ pub fn part_two(input: &str) -> Option<u64> {
         .filter_map(|l| l.parse::<u64>().ok())
         .map(|n| changes(n, ITERATIONS))
         .for_each(|iter| {
-            let mut inner_totals: HashMap<u32, u64> = HashMap::new();
+            let mut seen: HashSet<u32> = HashSet::with_capacity(2001);
 
             iter.iter()
                 .tuple_windows()
-                .for_each(|(&a, &b, &c, &d, &e)| {
-                    let key = build_key(a, b, c, d, e);
-
-                    inner_totals.entry(key).or_insert(e as u64);
+                .map(|(&a, &b, &c, &d, &e)| (build_key(a, b, c, d, e), e))
+                .filter(|(key, _)| seen.insert(*key))
+                .for_each(|(key, e)| {
+                    *totals.entry(key).or_insert(0) += e as u64;
                 });
-
-            inner_totals.iter().for_each(|(k, v)| {
-                *totals.entry(*k).or_insert(0) += *v;
-            });
         });
 
     totals.into_read_only().values().max().copied()
