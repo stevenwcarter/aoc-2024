@@ -16,13 +16,13 @@ use jemallocator::Jemalloc;
 static GLOBAL: Jemalloc = Jemalloc;
 
 /// bitwise XOR of new number and the original secret
-#[inline(always)]
+#[inline]
 fn mix(n: u64, secret: u64) -> u64 {
     n ^ secret
 }
 
 /// Determine modulo of secret to keep it from growing too large
-#[inline(always)]
+#[inline]
 fn prune(n: u64) -> u64 {
     n % 16777216
 }
@@ -32,12 +32,17 @@ fn prune(n: u64) -> u64 {
 fn process(secret: u64, iters: usize) -> u64 {
     let mut n = secret;
     for _ in 0..iters {
-        n = prune(mix(n * 64, n));
-        n = prune(mix(n / 32, n));
-        n = prune(mix(n * 2048, n));
+        next_iter(&mut n);
     }
 
     n
+}
+
+#[inline]
+fn next_iter(n: &mut u64) {
+    *n = prune(mix(*n * 64, *n));
+    *n = prune(mix(*n / 32, *n));
+    *n = prune(mix(*n * 2048, *n));
 }
 
 /// Given the secret and the number of iterations, return all the
@@ -49,9 +54,7 @@ fn changes(secret: u64, iters: usize) -> Vec<u8> {
     vec.extend(
         (0..iters)
             .map(|_| {
-                n = prune(mix(n * 64, n));
-                n = prune(mix(n / 32, n));
-                n = prune(mix(n * 2048, n));
+                next_iter(&mut n);
                 (n % 10) as u8
             })
             .collect::<Vec<u8>>(),
@@ -60,53 +63,15 @@ fn changes(secret: u64, iters: usize) -> Vec<u8> {
 }
 
 /// Builds a key for the HashMap given the different prices. Calculate the differences,
-/// and use them to build the key. Squash them all into a u32 (bit-shifting by 5 to make
-/// room) just because I felt like it and didn't want to use the 4-tuple type everywhere.
+/// and use them to build the key. Squash them all into a u32
+#[inline]
 fn build_key(a: u8, b: u8, c: u8, d: u8, e: u8) -> u32 {
-    let d1 = b as i8 - a as i8;
-    let d2 = c as i8 - b as i8;
-    let d3 = d as i8 - c as i8;
-    let d4 = e as i8 - d as i8;
+    let d1 = ((b as i8 - a as i8) + 10) as u8;
+    let d2 = ((c as i8 - b as i8) + 10) as u8;
+    let d3 = ((d as i8 - c as i8) + 10) as u8;
+    let d4 = ((e as i8 - d as i8) + 10) as u8;
 
-    // construct a u32 key instead of using (i8,i8,i8,i8) as the key
-    // use bitshifting to make room for each i8 so it remains unique
-    let mut result: u32 = (d1 + 10) as u32;
-    // 2^4 is 16, and these could be up to 20, so need 5 bits to store each
-    result <<= 5;
-    result += (d2 + 10) as u32; // min -9, adding 10 brings them all positive
-    result <<= 5;
-    result += (d3 + 10) as u32;
-    result <<= 5;
-    result += (d4 + 10) as u32;
-    result
-}
-
-/// Find the total number of bananas that are possible given a single sequence of differences
-/// in offered bananas. Never thought I'd type that sentence..
-fn find_best_iter(iters: &[Vec<u8>]) -> Option<u64> {
-    let totals: DashMap<u32, u64> = DashMap::new();
-
-    iters.par_iter().for_each(|iter| {
-        let mut inner_totals: HashMap<u32, u64> = HashMap::new();
-
-        iter.iter()
-            .tuple_windows()
-            .for_each(|(&a, &b, &c, &d, &e)| {
-                let key = build_key(a, b, c, d, e);
-
-                if !inner_totals.contains_key(&key) {
-                    inner_totals.entry(key).or_insert(e as u64);
-                }
-            });
-
-        {
-            inner_totals.iter().for_each(|(k, v)| {
-                *totals.entry(*k).or_insert(0) += *v;
-            });
-        }
-    });
-
-    totals.into_iter().map(|(_, v)| v).max()
+    u32::from_ne_bytes([d1, d2, d3, d4])
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
@@ -119,13 +84,29 @@ pub fn part_one(input: &str) -> Option<u64> {
     )
 }
 pub fn part_two(input: &str) -> Option<u64> {
-    let iter: Vec<Vec<u8>> = input
+    let totals: DashMap<u32, u64> = DashMap::new();
+    input
         .lines()
+        .par_bridge()
         .filter_map(|l| l.parse::<u64>().ok())
         .map(|n| changes(n, ITERATIONS))
-        .collect();
+        .for_each(|iter| {
+            let mut inner_totals: HashMap<u32, u64> = HashMap::new();
 
-    find_best_iter(&iter)
+            iter.iter()
+                .tuple_windows()
+                .for_each(|(&a, &b, &c, &d, &e)| {
+                    let key = build_key(a, b, c, d, e);
+
+                    inner_totals.entry(key).or_insert(e as u64);
+                });
+
+            inner_totals.iter().for_each(|(k, v)| {
+                *totals.entry(*k).or_insert(0) += *v;
+            });
+        });
+
+    totals.into_read_only().values().max().copied()
 }
 
 #[cfg(test)]
