@@ -11,7 +11,7 @@ pub fn split_stone(stone: u64) -> (u64, Option<u64>) {
 }
 
 pub fn is_even(stone: u64) -> bool {
-    (stone.checked_ilog10().unwrap_or(0) + 1) % 2 == 0
+    (stone.checked_ilog10().unwrap_or(0) + 1).is_multiple_of(2)
 }
 
 pub fn process_stone(stone: u64) -> (u64, Option<u64>) {
@@ -61,7 +61,6 @@ pub fn part_two(input: &str) -> Option<u64> {
     Some(
         parse_stones(input)
             .iter()
-            // .par_iter()
             .map(|n| count_stones(*n, 75))
             .sum(),
     )

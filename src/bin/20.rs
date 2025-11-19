@@ -25,18 +25,18 @@ fn find_original_min_distances(tiles: &mut [GridTile], width: usize, start: usiz
     queue.push_front((start, 0));
 
     while let Some((position, distance)) = queue.pop_front() {
-        if let GridTile::Open(distances) = &mut tiles[position] {
-            if distances.0.is_none() {
-                distances.0 = Some(distance);
-                [
-                    position + 1,
-                    position - 1,
-                    position + width,
-                    position - width,
-                ]
-                .into_iter()
-                .for_each(|new_position| queue.push_back((new_position, distance + 1)));
-            }
+        if let GridTile::Open(distances) = &mut tiles[position]
+            && distances.0.is_none()
+        {
+            distances.0 = Some(distance);
+            [
+                position + 1,
+                position - 1,
+                position + width,
+                position - width,
+            ]
+            .into_iter()
+            .for_each(|new_position| queue.push_back((new_position, distance + 1)));
         }
 
         if position == end {
@@ -50,18 +50,18 @@ fn find_original_min_distances(tiles: &mut [GridTile], width: usize, start: usiz
     queue.push_front((start, 0));
 
     while let Some((position, distance)) = queue.pop_front() {
-        if let GridTile::Open(distances) = &mut tiles[position] {
-            if distances.1.is_none() {
-                distances.1 = Some(distance);
-                [
-                    position + 1,
-                    position - 1,
-                    position + width,
-                    position - width,
-                ]
-                .into_iter()
-                .for_each(|new_position| queue.push_back((new_position, distance + 1)));
-            }
+        if let GridTile::Open(distances) = &mut tiles[position]
+            && distances.1.is_none()
+        {
+            distances.1 = Some(distance);
+            [
+                position + 1,
+                position - 1,
+                position + width,
+                position - width,
+            ]
+            .into_iter()
+            .for_each(|new_position| queue.push_back((new_position, distance + 1)));
         }
 
         if position == end {

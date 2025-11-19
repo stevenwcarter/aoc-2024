@@ -1,9 +1,12 @@
+#![allow(unused_imports)]
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 use rayon::prelude::*;
 
+use aoc_mine::{Coord, Grid, HashGrid, LinearGrid};
+
 advent_of_code::solution!(6);
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SquareType {
     Obstacle,
     Clear,
@@ -19,34 +22,21 @@ pub enum Direction {
 
 const MAX_ITERS: usize = 6000;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Coord(u8, u8);
-
-impl Coord {
-    pub fn x(&self) -> u8 {
-        self.0
-    }
-    pub fn y(&self) -> u8 {
-        self.1
-    }
-}
-
 #[derive(Debug, Clone)]
-pub struct State {
-    pub grid: HashMap<Coord, SquareType>,
-    pub guard_pos: Coord,
+pub struct State<T: Grid<u8, SquareType>> {
+    pub grid: T,
+    pub guard_pos: Coord<u8>,
     pub guard_facing: Direction,
-    pub visited: HashMap<Coord, bool>,
-    pub visited_obstacles: HashSet<(Coord, Direction)>,
+    pub visited: HashMap<Coord<u8>, bool>,
+    pub visited_obstacles: HashSet<(Coord<u8>, Direction)>,
     pub steps: usize,
     pub width: usize,
     pub height: usize,
 }
 
-impl State {
+impl State<LinearGrid<u8, SquareType>> {
     pub fn new_from_input(input: &str) -> Self {
-        let mut guard_pos: Option<Coord> = None;
-        let mut grid: HashMap<Coord, SquareType> = HashMap::new();
+        let mut guard_pos: Option<Coord<u8>> = None;
         let height = input.lines().collect::<Vec<_>>().len();
         let width = input
             .lines()
@@ -55,24 +45,29 @@ impl State {
             .chars()
             .collect::<Vec<_>>()
             .len();
+        // let mut grid: HashGrid<u8, SquareType> = HashGrid::new().set_min_x(0).set_min_y(0);
+        // grid = grid.set_max_x((width - 1) as u8);
+        // grid = grid.set_max_y((height - 1) as u8);
+        let mut grid: LinearGrid<u8, SquareType> =
+            LinearGrid::new(width, height, SquareType::Clear);
         for (y, l) in input.lines().enumerate() {
             for (x, c) in l.chars().enumerate() {
                 let square_type = match c {
                     '.' => SquareType::Clear,
                     '#' => SquareType::Obstacle,
                     '^' => {
-                        guard_pos = Some(Coord(x as u8, y as u8));
+                        guard_pos = Some((x as u8, y as u8).into());
                         SquareType::Clear
                     }
                     _ => unreachable!("unknown symbol {:?}", c),
                 };
-                grid.entry(Coord(x as u8, y as u8)).or_insert(square_type);
+                let _ = grid.insert((x as u8, y as u8).into(), square_type);
             }
         }
 
         Self {
             grid,
-            guard_pos: guard_pos.unwrap(),
+            guard_pos: guard_pos.expect("no guard position found in input"),
             guard_facing: Direction::Up,
             visited: HashMap::new(),
             visited_obstacles: HashSet::new(),
@@ -81,7 +76,8 @@ impl State {
             height,
         }
     }
-
+}
+impl<T: Grid<u8, SquareType>> State<T> {
     fn turn(&mut self) {
         self.guard_facing = match self.guard_facing {
             Direction::Up => Direction::Right,
@@ -91,28 +87,16 @@ impl State {
         }
     }
 
-    fn next_block(&self) -> Option<Coord> {
+    fn next_block(&self) -> Option<Coord<u8>> {
         let current_pos = self.guard_pos;
         match self.guard_facing {
-            Direction::Up => {
-                if current_pos.1 == 0 {
-                    None
-                } else {
-                    Some(Coord(current_pos.0, current_pos.1 - 1))
-                }
-            }
-            Direction::Right => Some(Coord(current_pos.0 + 1, current_pos.1)),
-            Direction::Down => Some(Coord(current_pos.0, current_pos.1 + 1)),
-            Direction::Left => {
-                if current_pos.0 == 0 {
-                    None
-                } else {
-                    Some(Coord(current_pos.0 - 1, current_pos.1))
-                }
-            }
+            Direction::Up => current_pos.up(),
+            Direction::Right => current_pos.right(),
+            Direction::Down => current_pos.down(),
+            Direction::Left => current_pos.left(),
         }
     }
-    fn next_block2(&mut self) -> Option<Coord> {
+    fn next_block2(&mut self) -> Option<Coord<u8>> {
         let current_pos = self.guard_pos;
         match self.guard_facing {
             Direction::Up => {
@@ -123,28 +107,29 @@ impl State {
                     .chain([None])
                     .tuple_windows()
                     .filter_map(|(y, y2)| {
-                        y?;
-                        let y = y.unwrap();
+                        let y = y?;
                         if y == 0 {
                             return None;
                         }
-                        let result =
-                            self.grid.get(&Coord(current_pos.0, y)) == Some(&SquareType::Obstacle);
+                        let result = self
+                            .grid
+                            .matches(&(current_pos.0, y).into(), SquareType::Obstacle)
+                            .unwrap_or(false);
                         if result {
                             return Some(Coord(current_pos.0, y));
                         }
-                        y2?;
-                        let y2 = y2.unwrap();
-                        let result2 =
-                            self.grid.get(&Coord(current_pos.0, y2)) == Some(&SquareType::Obstacle);
+                        let y2 = y2?;
+                        let result2 = self
+                            .grid
+                            .matches(&(current_pos.0, y2).into(), SquareType::Obstacle)
+                            .ok()?;
 
                         if result2 {
                             updated_guard_pos = Some(Coord(current_pos.0, y));
+                            Some(Coord(current_pos.0, y2))
                         } else {
-                            return None;
+                            None
                         }
-
-                        Some(Coord(current_pos.0, y2))
                     })
                     .next();
 
@@ -160,28 +145,29 @@ impl State {
                     .chain([None])
                     .tuple_windows()
                     .filter_map(|(x, x2)| {
-                        x?;
-                        let x = x.unwrap() as u8;
+                        let x = x? as u8;
                         if x == 0 {
                             return None;
                         }
-                        let result =
-                            self.grid.get(&Coord(x, current_pos.1)) == Some(&SquareType::Obstacle);
+                        let result = self
+                            .grid
+                            .matches(&(x, current_pos.1).into(), SquareType::Obstacle)
+                            .unwrap_or(false);
                         if result {
                             return Some(Coord(x, current_pos.1));
                         }
-                        x2?;
-                        let x2 = x2.unwrap() as u8;
-                        let result2 =
-                            self.grid.get(&Coord(x2, current_pos.1)) == Some(&SquareType::Obstacle);
+                        let x2 = x2? as u8;
+                        let result2 = self
+                            .grid
+                            .matches(&(x2, current_pos.1).into(), SquareType::Obstacle)
+                            .ok()?;
 
                         if result2 {
                             updated_guard_pos = Some(Coord(x, current_pos.1));
+                            Some(Coord(x2, current_pos.1))
                         } else {
-                            return None;
+                            None
                         }
-
-                        Some(Coord(x2, current_pos.1))
                     })
                     .next();
 
@@ -197,28 +183,29 @@ impl State {
                     .chain([None])
                     .tuple_windows()
                     .filter_map(|(y, y2)| {
-                        y?;
-                        let y = y.unwrap() as u8;
+                        let y = y? as u8;
                         if y == 0 {
                             return None;
                         }
-                        let result =
-                            self.grid.get(&Coord(current_pos.0, y)) == Some(&SquareType::Obstacle);
+                        let result = self
+                            .grid
+                            .matches(&(current_pos.0, y).into(), SquareType::Obstacle)
+                            .unwrap_or(false);
                         if result {
                             return Some(Coord(current_pos.0, y));
                         }
-                        y2?;
-                        let y2 = y2.unwrap() as u8;
-                        let result2 =
-                            self.grid.get(&Coord(current_pos.0, y2)) == Some(&SquareType::Obstacle);
+                        let y2 = y2? as u8;
+                        let result2 = self
+                            .grid
+                            .matches(&(current_pos.0, y2).into(), SquareType::Obstacle)
+                            .ok()?;
 
                         if result2 {
                             updated_guard_pos = Some(Coord(current_pos.0, y));
+                            Some(Coord(current_pos.0, y2))
                         } else {
-                            return None;
+                            None
                         }
-
-                        Some(Coord(current_pos.0, y2))
                     })
                     .next();
 
@@ -235,28 +222,29 @@ impl State {
                     .chain([None])
                     .tuple_windows()
                     .filter_map(|(x, x2)| {
-                        x?;
-                        let x = x.unwrap();
+                        let x = x?;
                         if x == 0 {
                             return None;
                         }
-                        let result =
-                            self.grid.get(&Coord(x, current_pos.1)) == Some(&SquareType::Obstacle);
+                        let result = self
+                            .grid
+                            .matches(&(x, current_pos.1).into(), SquareType::Obstacle)
+                            .unwrap_or(false);
                         if result {
                             return Some(Coord(x, current_pos.1));
                         }
-                        x2?;
-                        let x2 = x2.unwrap();
-                        let result2 =
-                            self.grid.get(&Coord(x2, current_pos.1)) == Some(&SquareType::Obstacle);
+                        let x2 = x2?;
+                        let result2 = self
+                            .grid
+                            .matches(&(x2, current_pos.1).into(), SquareType::Obstacle)
+                            .ok()?;
 
                         if result2 {
                             updated_guard_pos = Some(Coord(x, current_pos.1));
+                            Some(Coord(x2, current_pos.1))
                         } else {
-                            return None;
+                            None
                         }
-
-                        Some(Coord(x2, current_pos.1))
                     })
                     .next();
 
@@ -269,12 +257,9 @@ impl State {
     }
 
     fn next_block_type(&self) -> Option<&SquareType> {
-        let next_pos = self.next_block();
+        let next_pos = self.next_block()?;
 
-        match next_pos {
-            Some(coord) => self.grid.get(&coord),
-            None => None,
-        }
+        self.grid.get(&next_pos)
     }
 
     pub fn step(&mut self) -> bool {
@@ -307,25 +292,27 @@ impl State {
             return Some(false);
         }
         let next_block = self.next_block2();
-        self.visited.entry(self.guard_pos).or_insert(true);
-        let next_block_type = self.next_block_type();
-        // println!("Next block type: {:?}", next_block_type);
-        if next_block.is_none() || next_block_type.is_none() {
+        if next_block.is_none() {
             return Some(false);
         }
-        let next_block = next_block?;
+        self.visited.entry(self.guard_pos).or_insert(true);
+        let next_block_type = self.next_block_type();
+
+        if next_block_type.is_none() {
+            return Some(false);
+        }
+
         match next_block_type? {
             SquareType::Clear => {
-                self.guard_pos = next_block;
+                self.guard_pos = next_block.unwrap();
             }
             SquareType::Obstacle => {
-                if !self
+                match self
                     .visited_obstacles
                     .insert((self.guard_pos, self.guard_facing))
                 {
-                    return Some(true);
-                } else {
-                    self.turn();
+                    false => return Some(true),
+                    true => self.turn(),
                 }
             }
         }
@@ -354,13 +341,14 @@ pub fn part_two(input: &str) -> Option<usize> {
         // only places we could place an obstruction that would
         // change the path
     }
-    let clear_areas: Vec<Coord> = check_state.visited.keys().copied().collect();
+    let clear_areas: Vec<Coord<u8>> = check_state.visited.keys().copied().collect();
 
     let valid_loops = clear_areas
         .par_iter()
         .filter(|coord| {
             let mut state = state.clone();
-            *state.grid.entry(**coord).or_insert(SquareType::Obstacle) = SquareType::Obstacle;
+
+            let _ = state.grid.insert(**coord, SquareType::Obstacle);
             loop {
                 if let Some(is_loop) = state.step2() {
                     return is_loop;

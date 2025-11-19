@@ -66,12 +66,12 @@ where
         for (neighbor, cost) in successors(&current_node) {
             let new_cost = current_cost + cost;
 
-            if dist.get(&neighbor).map_or(true, |&c| new_cost < c) {
+            if dist.get(&neighbor).is_none_or(|&c| new_cost < c) {
                 // update if a shorter path is found
                 dist.insert(neighbor.clone(), new_cost);
                 parents.insert(neighbor.clone(), vec![current_node.clone()]);
                 heap.push(Reverse((new_cost, neighbor)));
-            } else if dist.get(&neighbor).map_or(false, |&c| new_cost == c) {
+            } else if dist.get(&neighbor).is_some_and(|&c| new_cost == c) {
                 // add if path cost is the same
                 parents
                     .entry(neighbor.clone())
@@ -226,10 +226,10 @@ impl Maze {
             ((*position, left_dir.unwrap()), 1000),
             ((*position, right_dir.unwrap()), 1000),
         ];
-        if let Some(advancement_step) = advancement_step {
-            if !self.walls.contains(&advancement_step) {
-                options.push(((advancement_step, *facing), 1));
-            }
+        if let Some(advancement_step) = advancement_step
+            && !self.walls.contains(&advancement_step)
+        {
+            options.push(((advancement_step, *facing), 1));
         }
 
         options

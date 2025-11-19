@@ -1,31 +1,42 @@
 advent_of_code::solution!(13);
 
+use aoc_mine::Coord;
+
 use nom::{
+    IResult,
     bytes::complete::tag,
     character::complete::i64,
     multi::separated_list1,
     sequence::{preceded, separated_pair, tuple},
-    IResult,
 };
 
 const PART_2_OFFSET: i64 = 10_000_000_000_000;
 
-type Coord = (i64, i64);
-fn parse_input(input: &str) -> IResult<&str, Vec<(Coord, Coord, Coord)>> {
+type CoordI = Coord<i64>;
+
+fn parse_input(input: &str) -> IResult<&str, Vec<(CoordI, CoordI, CoordI)>> {
     let machine = tuple((
         preceded(tag("Button A: X+"), separated_pair(i64, tag(", Y+"), i64)),
         preceded(tag("\nButton B: X+"), separated_pair(i64, tag(", Y+"), i64)),
         preceded(tag("\nPrize: X="), separated_pair(i64, tag(", Y="), i64)),
     ));
-    separated_list1(tag("\n\n"), machine)(input)
+    let mut parser = separated_list1(tag("\n\n"), machine);
+
+    parser(input).map(|(remaining, output)| {
+        let machines = output
+            .into_iter()
+            .map(|(a, b, p)| ((a.0, a.1).into(), (b.0, b.1).into(), (p.0, p.1).into()))
+            .collect();
+        (remaining, machines)
+    })
 }
 
 // originally solved part 1 with an iterative approach.. that certainly
 // didn't work for part 2. Linear algebra to the rescue!
-fn solve_machine(a: Coord, b: Coord, p: Coord) -> Option<i64> {
-    let (ax, ay) = a;
-    let (bx, by) = b;
-    let (px, py) = p;
+fn solve_machine(a: Coord<i64>, b: Coord<i64>, p: Coord<i64>) -> Option<i64> {
+    let (ax, ay) = (a.x(), a.y());
+    let (bx, by) = (b.x(), b.y());
+    let (px, py) = (p.x(), p.y());
 
     let denominator = bx * ay - ax * by;
     if denominator == 0 {
@@ -70,11 +81,11 @@ pub fn part_two(input: &str) -> Option<i64> {
             .1
             .into_iter()
             .map(|(a, b, p)| {
-                let (mut px, mut py) = p;
+                let (mut px, mut py) = p.into();
                 px += PART_2_OFFSET;
                 py += PART_2_OFFSET;
 
-                (a, b, (px, py))
+                (a, b, (px, py).into())
             })
             .filter_map(|(a, b, p)| solve_machine(a, b, p))
             .sum(),

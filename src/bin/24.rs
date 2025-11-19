@@ -152,7 +152,7 @@ impl<'a> Data<'a> {
             .rev()
             .map(|n| {
                 self.values
-                    .get(format!("z{:0>2}", n).as_str())
+                    .get(format!("z{n:0>2}").as_str())
                     .expect("Unknown index")
             })
             .map(|&v| match v {
@@ -180,11 +180,11 @@ impl<'a> Data<'a> {
 
     /// used to override the starting condition for a wire
     fn set_wire(&mut self, prefix: char, n: u8, value: bool) {
-        let key = format!("{prefix}{:0>2}", n);
+        let key = format!("{prefix}{n:0>2}");
         let (_, v) = self
             .values
             .iter_mut()
-            .find(|(&k, _)| k == key.as_str())
+            .find(|(k, _)| **k == key.as_str())
             .unwrap();
         *v = value;
     }
@@ -284,7 +284,7 @@ pub fn part_two(input: &str) -> Option<String> {
     });
 
     if !bad_bits.is_empty() {
-        println!("Bad bits: {:#?}", bad_bits);
+        println!("Bad bits: {bad_bits:#?}");
     }
 
     // (0..3).for_each(|idx| {
