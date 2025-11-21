@@ -1,5 +1,6 @@
 advent_of_code::solution!(14);
 
+use aoc_mine::Coord;
 use rayon::prelude::*;
 use std::{
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -8,16 +9,16 @@ use std::{
 
 use hashbrown::HashMap;
 use nom::{
+    IResult,
     bytes::complete::tag,
     character::complete::{char, i64, multispace0, multispace1, u64},
     combinator::map,
     multi::separated_list1,
     sequence::{preceded, separated_pair, tuple},
-    IResult,
 };
 
-type RobotPosition = (usize, usize);
-type RobotVelocity = (i64, i64);
+type RobotPosition = Coord<usize>;
+type RobotVelocity = Coord<i64>;
 type RobotPositionsAndVelocity = (RobotPosition, RobotVelocity);
 
 fn parse_line(input: &str) -> IResult<&str, RobotPositionsAndVelocity> {
@@ -29,7 +30,9 @@ fn parse_line(input: &str) -> IResult<&str, RobotPositionsAndVelocity> {
     let parse_p = preceded(tag("p="), parse_usize_pair);
     let parse_v = preceded(tag("v="), parse_i64_pair);
 
-    map(tuple((parse_p, multispace1, parse_v)), |(p, _, v)| (p, v))(input)
+    map(tuple((parse_p, multispace1, parse_v)), |(p, _, v)| {
+        (p.into(), v.into())
+    })(input)
 }
 
 fn parse_input(input: &str) -> IResult<&str, Vec<RobotPositionsAndVelocity>> {
@@ -53,14 +56,14 @@ pub fn part_one(input: &str) -> Option<u32> {
     let mut quadrants: HashMap<u8, u32> = HashMap::new();
     updated_robots
         .iter()
-        .filter_map(|(px, py)| {
-            if px < &half_x && py < &half_y {
+        .filter_map(|p| {
+            if p.x() < half_x && p.y() < half_y {
                 Some(1)
-            } else if px > &half_x && py < &half_y {
+            } else if p.x() > half_x && p.y() < half_y {
                 Some(2)
-            } else if px < &half_x && py > &half_y {
+            } else if p.x() < half_x && p.y() > half_y {
                 Some(3)
-            } else if px > &half_x && py > &half_y {
+            } else if p.x() > half_x && p.y() > half_y {
                 Some(4)
             } else {
                 None
@@ -76,15 +79,15 @@ pub fn part_one(input: &str) -> Option<u32> {
 // steps the robots immediately to their final offset, then finds the remainder
 // to align with the position they would have had after teleportation.
 fn step_robot(
-    ((px, py), (vx, vy)): &RobotPositionsAndVelocity,
+    (p, v): &RobotPositionsAndVelocity,
     steps: i64,
     width: usize,
     height: usize,
-) -> (usize, usize) {
-    let px = (*px as i64 + vx * steps).rem_euclid(width as i64) as usize;
-    let py = (*py as i64 + vy * steps).rem_euclid(height as i64) as usize;
+) -> Coord<usize> {
+    let px = (p.x() as i64 + v.x() * steps).rem_euclid(width as i64) as usize;
+    let py = (p.y() as i64 + v.y() * steps).rem_euclid(height as i64) as usize;
 
-    (px, py)
+    (px, py).into()
 }
 
 fn find_lines(points: &mut [RobotPosition]) -> bool {
@@ -98,7 +101,9 @@ fn find_lines(points: &mut [RobotPosition]) -> bool {
     let quarter_idx = points.len() / 4;
     let three_quarter_idx = quarter_idx * 3;
 
-    for &mut (x, y) in &mut points[quarter_idx..three_quarter_idx] {
+    for &mut p in &mut points[quarter_idx..three_quarter_idx] {
+        let x = p.x();
+        let y = p.y();
         if Some(x) == last_x && Some(y) == last_y.map(|ly| ly + 1) {
             count += 1;
             if count >= 10 {

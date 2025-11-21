@@ -1,3 +1,4 @@
+use aoc_mine::Coord;
 use hashbrown::HashMap;
 
 advent_of_code::solution!(15);
@@ -16,8 +17,8 @@ pub enum BlockType {
 
 #[derive(Debug, Clone)]
 pub struct Warehouse {
-    pub grid: HashMap<(usize, usize), BlockType>,
-    pub robot_position: (usize, usize),
+    pub grid: HashMap<Coord<usize>, BlockType>,
+    pub robot_position: Coord<usize>,
     pub width: usize,
     pub height: usize,
     pub directions: Vec<Direction>,
@@ -32,7 +33,7 @@ impl Warehouse {
             width *= 2;
         }
         let height = graph.lines().collect::<Vec<_>>().len();
-        let mut grid: HashMap<(usize, usize), BlockType> = HashMap::new();
+        let mut grid: HashMap<Coord<usize>, BlockType> = HashMap::new();
         if !part_2 {
             graph.lines().enumerate().for_each(|(y, line)| {
                 line.chars().enumerate().for_each(|(x, ch)| {
@@ -44,11 +45,11 @@ impl Warehouse {
                         _ => unreachable!("Should not have received {ch}"),
                     };
                     if block_type == BlockType::Robot {
-                        robot_position = Some((x, y));
+                        robot_position = Some((x, y).into());
                         block_type = BlockType::Open;
                     }
 
-                    *grid.entry((x, y)).or_insert(block_type) = block_type;
+                    *grid.entry((x, y).into()).or_insert(block_type) = block_type;
                 });
             });
         } else {
@@ -69,12 +70,12 @@ impl Warehouse {
                         _ => unreachable!("Should not have received {ch}"),
                     };
                     if block_type_l == BlockType::Robot {
-                        robot_position = Some((x * 2, y));
+                        robot_position = Some((x * 2, y).into());
                         block_type_l = BlockType::Open;
                     }
 
-                    *grid.entry((x * 2, y)).or_insert(block_type_l) = block_type_l;
-                    *grid.entry((x * 2 + 1, y)).or_insert(block_type_r) = block_type_r;
+                    *grid.entry((x * 2, y).into()).or_insert(block_type_l) = block_type_l;
+                    *grid.entry((x * 2 + 1, y).into()).or_insert(block_type_r) = block_type_r;
                 });
             });
         }
@@ -100,7 +101,7 @@ impl Warehouse {
         }
     }
 
-    pub fn move_unchecked(&mut self, old_position: &(usize, usize), new_position: &(usize, usize)) {
+    pub fn move_unchecked(&mut self, old_position: &Coord<usize>, new_position: &Coord<usize>) {
         let contents = *self.grid.get(old_position).unwrap();
         *self.grid.entry(*old_position).or_insert(BlockType::Open) = BlockType::Open;
         *self.grid.entry(*new_position).or_insert(contents) = contents;
@@ -108,7 +109,7 @@ impl Warehouse {
 
     pub fn attempt_move(
         &mut self,
-        position: &(usize, usize),
+        position: &Coord<usize>,
         direction: Direction,
         is_robot: bool,
     ) -> bool {
@@ -117,28 +118,28 @@ impl Warehouse {
                 if position.1 == 0 {
                     None
                 } else {
-                    Some((position.0, position.1 - 1))
+                    Some(&(position.0, position.1 - 1).into())
                 }
             }
             Direction::Down => {
                 if position.1 >= self.height - 1 {
                     None
                 } else {
-                    Some((position.0, position.1 + 1))
+                    Some(&(position.0, position.1 + 1).into())
                 }
             }
             Direction::Left => {
                 if position.0 == 0 {
                     None
                 } else {
-                    Some((position.0 - 1, position.1))
+                    Some(&(position.0 - 1, position.1).into())
                 }
             }
             Direction::Right => {
                 if position.0 >= self.width - 1 {
                     None
                 } else {
-                    Some((position.0 + 1, position.1))
+                    Some(&(position.0 + 1, position.1).into())
                 }
             }
         };
@@ -146,17 +147,17 @@ impl Warehouse {
             return false;
         }
         let next_position = next_position.unwrap();
-        let can_move = match self.grid.get(&next_position).unwrap() {
+        let can_move = match self.grid.get(next_position).unwrap() {
             BlockType::Open => true,
             BlockType::Wall => false,
-            BlockType::Box => self.attempt_move(&next_position, direction, false),
+            BlockType::Box => self.attempt_move(next_position, direction, false),
             _ => unreachable!("Should not be other types"),
         };
 
         if can_move {
-            self.move_unchecked(position, &next_position);
+            self.move_unchecked(position, next_position);
             if is_robot {
-                self.robot_position = next_position;
+                self.robot_position = *next_position;
             }
         }
 
@@ -164,7 +165,7 @@ impl Warehouse {
     }
     pub fn attempt_move_part2(
         &mut self,
-        position: &(usize, usize),
+        position: &Coord<usize>,
         direction: Direction,
         is_robot: bool,
         skip_moving: bool,
@@ -174,28 +175,28 @@ impl Warehouse {
                 if position.1 == 0 {
                     None
                 } else {
-                    Some((position.0, position.1 - 1))
+                    Some((position.0, position.1 - 1).into())
                 }
             }
             Direction::Down => {
                 if position.1 >= self.height - 1 {
                     None
                 } else {
-                    Some((position.0, position.1 + 1))
+                    Some((position.0, position.1 + 1).into())
                 }
             }
             Direction::Left => {
                 if position.0 == 0 {
                     None
                 } else {
-                    Some((position.0 - 1, position.1))
+                    Some((position.0 - 1, position.1).into())
                 }
             }
             Direction::Right => {
                 if position.0 >= self.width - 1 {
                     None
                 } else {
-                    Some((position.0 + 1, position.1))
+                    Some((position.0 + 1, position.1).into())
                 }
             }
         };
@@ -213,8 +214,10 @@ impl Warehouse {
                     if !self.attempt_move_part2(&next_position, direction, false, true) {
                         false
                     } else {
-                        let (x, y) = next_position;
-                        let right_next_position = (x + 1, y);
+                        let p = next_position;
+                        let x = p.x();
+                        let y = p.y();
+                        let right_next_position = (x + 1, y).into();
                         let right_side_can_move =
                             self.attempt_move_part2(&right_next_position, direction, false, true);
                         if right_side_can_move {
@@ -238,8 +241,10 @@ impl Warehouse {
                     if !self.attempt_move_part2(&next_position, direction, false, true) {
                         false
                     } else {
-                        let (x, y) = next_position;
-                        let left_next_position = (x - 1, y);
+                        let p = next_position;
+                        let x = p.x();
+                        let y = p.y();
+                        let left_next_position = (x - 1, y).into();
                         let left_side_can_move =
                             self.attempt_move_part2(&left_next_position, direction, false, true);
                         if left_side_can_move {
@@ -289,7 +294,7 @@ impl Warehouse {
         self.grid
             .iter()
             .filter(|(_, p)| matches!(p, BlockType::Box))
-            .map(|((x, y), _)| y * 100 + x)
+            .map(|(p, _)| p.y() * 100 + p.x())
             .sum()
     }
 
@@ -298,10 +303,11 @@ impl Warehouse {
         (0..self.height).for_each(|y| {
             let line = (0..self.width)
                 .map(|x| {
-                    if (x, y) == self.robot_position {
+                    let p = Coord::new(x, y);
+                    if p == self.robot_position {
                         return '@';
                     }
-                    match self.grid.get(&(x, y)).unwrap_or(&BlockType::Open) {
+                    match self.grid.get(&p).unwrap_or(&BlockType::Open) {
                         BlockType::Box => {
                             if part_2 {
                                 '['
@@ -347,13 +353,13 @@ mod tests {
 
     #[test]
     fn test_coordinate_summation() {
-        let mut grid: HashMap<(usize, usize), BlockType> = HashMap::new();
-        *grid.entry((4, 1)).or_insert(BlockType::Box) = BlockType::Box;
+        let mut grid: HashMap<Coord<usize>, BlockType> = HashMap::new();
+        *grid.entry((4, 1).into()).or_insert(BlockType::Box) = BlockType::Box;
         let warehouse = Warehouse {
             grid,
             width: 10,
             height: 2,
-            robot_position: (0, 0),
+            robot_position: (0, 0).into(),
             directions: vec![],
         };
 
