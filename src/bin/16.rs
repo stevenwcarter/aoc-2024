@@ -1,5 +1,5 @@
 #![allow(unused_assignments)]
-use advent_of_code::Point;
+use aoc_mine::Coord;
 use num::Zero;
 
 use hashbrown::{HashMap, HashSet};
@@ -124,11 +124,11 @@ where
 use advent_of_code::CardinalDirection::{self, *};
 
 pub struct Maze {
-    pub walls: HashSet<Point>,
+    pub walls: HashSet<Coord<usize>>,
     pub width: usize,
     pub height: usize,
-    pub goal: Point,
-    pub position: Point,
+    pub goal: Coord<usize>,
+    pub position: Coord<usize>,
     pub facing: CardinalDirection,
 }
 
@@ -143,9 +143,9 @@ impl Maze {
             .collect::<Vec<_>>()
             .len();
         let height = input.lines().collect::<Vec<_>>().len();
-        let mut start: Option<Point> = None;
-        let mut goal: Option<Point> = None;
-        let walls: HashSet<Point> = input
+        let mut start: Option<Coord<usize>> = None;
+        let mut goal: Option<Coord<usize>> = None;
+        let walls: HashSet<Coord<usize>> = input
             .lines()
             .enumerate()
             .flat_map(|(y, line)| {
@@ -163,7 +163,7 @@ impl Maze {
                         '#' => Some((x, y).into()),
                         _ => None,
                     })
-                    .collect::<HashSet<Point>>()
+                    .collect::<HashSet<Coord<usize>>>()
             })
             .collect();
 
@@ -179,50 +179,34 @@ impl Maze {
 
     pub fn successors(
         &self,
-        position: &Point,
+        position: &Coord<usize>,
         facing: &CardinalDirection,
-    ) -> Vec<((Point, CardinalDirection), u32)> {
+    ) -> Vec<((Coord<usize>, CardinalDirection), u32)> {
         let mut right_dir: Option<CardinalDirection> = None;
         let mut left_dir: Option<CardinalDirection> = None;
-        let advancement_step: Option<Point> = match facing {
+        let advancement_step: Option<Coord<usize>> = match facing {
             North => {
                 right_dir = Some(East);
                 left_dir = Some(West);
-                if position.y == 0 {
-                    None
-                } else {
-                    Some((position.x, position.y - 1).into())
-                }
+                position.up(Some(0))
             }
             South => {
                 right_dir = Some(West);
                 left_dir = Some(East);
-                if position.y == (self.height - 1) as u32 {
-                    None
-                } else {
-                    Some((position.x, position.y + 1).into())
-                }
+                position.down(Some(self.height - 1))
             }
             East => {
                 right_dir = Some(South);
                 left_dir = Some(North);
-                if position.x == (self.width - 1) as u32 {
-                    None
-                } else {
-                    Some((position.x + 1, position.y).into())
-                }
+                position.right(Some(self.width - 1))
             }
             West => {
                 right_dir = Some(North);
                 left_dir = Some(South);
-                if position.x == 0 {
-                    None
-                } else {
-                    Some((position.x - 1, position.y).into())
-                }
+                position.left(Some(0))
             }
         };
-        let mut options: Vec<((Point, CardinalDirection), u32)> = vec![
+        let mut options: Vec<((Coord<usize>, CardinalDirection), u32)> = vec![
             ((*position, left_dir.unwrap()), 1000),
             ((*position, right_dir.unwrap()), 1000),
         ];
@@ -238,7 +222,7 @@ impl Maze {
 
 pub fn part_one(input: &str) -> Option<u32> {
     let maze = Maze::parse_input(input);
-    let start: (Point, CardinalDirection) = (maze.position, maze.facing);
+    let start: (Coord<usize>, CardinalDirection) = (maze.position, maze.facing);
 
     Some(
         pathfinding::directed::dijkstra::dijkstra(
@@ -253,7 +237,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     let maze = Maze::parse_input(input);
-    let start: (Point, CardinalDirection) = (maze.position, maze.facing);
+    let start: (Coord<usize>, CardinalDirection) = (maze.position, maze.facing);
 
     let results = dijkstra(
         &start,
@@ -262,7 +246,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     )
     .unwrap();
 
-    let mut visited: HashSet<Point> = HashSet::new();
+    let mut visited: HashSet<Coord<usize>> = HashSet::new();
 
     results.0.iter().for_each(|h| {
         h.iter().for_each(|(p, _)| {

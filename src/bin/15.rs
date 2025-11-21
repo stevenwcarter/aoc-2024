@@ -115,9 +115,9 @@ impl Warehouse {
     ) -> bool {
         let next_position = match direction {
             Direction::Up => position.up(Some(0)),
-            Direction::Down => position.down(Some(self.height - 2)),
+            Direction::Down => position.down(Some(self.height - 1)),
             Direction::Left => position.left(Some(0)),
-            Direction::Right => position.right(Some(self.width - 2)),
+            Direction::Right => position.right(Some(self.width - 1)),
         };
         if next_position.is_none() {
             return false;
@@ -147,34 +147,10 @@ impl Warehouse {
         skip_moving: bool,
     ) -> bool {
         let next_position = match direction {
-            Direction::Up => {
-                if position.1 == 0 {
-                    None
-                } else {
-                    Some((position.0, position.1 - 1).into())
-                }
-            }
-            Direction::Down => {
-                if position.1 >= self.height - 1 {
-                    None
-                } else {
-                    Some((position.0, position.1 + 1).into())
-                }
-            }
-            Direction::Left => {
-                if position.0 == 0 {
-                    None
-                } else {
-                    Some((position.0 - 1, position.1).into())
-                }
-            }
-            Direction::Right => {
-                if position.0 >= self.width - 1 {
-                    None
-                } else {
-                    Some((position.0 + 1, position.1).into())
-                }
-            }
+            Direction::Up => position.up(Some(0)),
+            Direction::Down => position.down(Some(self.height - 1)),
+            Direction::Left => position.left(Some(0)),
+            Direction::Right => position.right(Some(self.width - 1)),
         };
         if next_position.is_none() {
             return false;
@@ -190,10 +166,7 @@ impl Warehouse {
                     if !self.attempt_move_part2(&next_position, direction, false, true) {
                         false
                     } else {
-                        let p = next_position;
-                        let x = p.x();
-                        let y = p.y();
-                        let right_next_position = (x + 1, y).into();
+                        let right_next_position = next_position.right(None).unwrap();
                         let right_side_can_move =
                             self.attempt_move_part2(&right_next_position, direction, false, true);
                         if right_side_can_move {
@@ -217,10 +190,7 @@ impl Warehouse {
                     if !self.attempt_move_part2(&next_position, direction, false, true) {
                         false
                     } else {
-                        let p = next_position;
-                        let x = p.x();
-                        let y = p.y();
-                        let left_next_position = (x - 1, y).into();
+                        let left_next_position = next_position.left(None).unwrap();
                         let left_side_can_move =
                             self.attempt_move_part2(&left_next_position, direction, false, true);
                         if left_side_can_move {
