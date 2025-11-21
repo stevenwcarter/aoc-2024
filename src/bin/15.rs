@@ -1,5 +1,4 @@
-use aoc_mine::Coord;
-use hashbrown::HashMap;
+use aoc_mine::{Coord, Grid, LinearGrid};
 
 advent_of_code::solution!(15);
 
@@ -17,7 +16,7 @@ pub enum BlockType {
 
 #[derive(Debug, Clone)]
 pub struct Warehouse {
-    pub grid: HashMap<Coord<usize>, BlockType>,
+    pub grid: LinearGrid<usize, BlockType>,
     pub robot_position: Coord<usize>,
     pub width: usize,
     pub height: usize,
@@ -33,7 +32,8 @@ impl Warehouse {
             width *= 2;
         }
         let height = graph.lines().collect::<Vec<_>>().len();
-        let mut grid: HashMap<Coord<usize>, BlockType> = HashMap::new();
+        let mut grid: LinearGrid<usize, BlockType> =
+            LinearGrid::new(width, height, BlockType::Open);
         if !part_2 {
             graph.lines().enumerate().for_each(|(y, line)| {
                 line.chars().enumerate().for_each(|(x, ch)| {
@@ -49,7 +49,7 @@ impl Warehouse {
                         block_type = BlockType::Open;
                     }
 
-                    *grid.entry((x, y).into()).or_insert(block_type) = block_type;
+                    let _ = grid.insert(Coord::new(x, y), block_type);
                 });
             });
         } else {
@@ -74,8 +74,8 @@ impl Warehouse {
                         block_type_l = BlockType::Open;
                     }
 
-                    *grid.entry((x * 2, y).into()).or_insert(block_type_l) = block_type_l;
-                    *grid.entry((x * 2 + 1, y).into()).or_insert(block_type_r) = block_type_r;
+                    let _ = grid.insert(Coord::new(x * 2, y), block_type_l);
+                    let _ = grid.insert(Coord::new(x * 2 + 1, y), block_type_r);
                 });
             });
         }
@@ -94,7 +94,7 @@ impl Warehouse {
 
         Self {
             grid,
-            robot_position: robot_position.unwrap(),
+            robot_position: robot_position.expect("did not find robot position"),
             width,
             height,
             directions,
@@ -103,8 +103,8 @@ impl Warehouse {
 
     pub fn move_unchecked(&mut self, old_position: &Coord<usize>, new_position: &Coord<usize>) {
         let contents = *self.grid.get(old_position).unwrap();
-        *self.grid.entry(*old_position).or_insert(BlockType::Open) = BlockType::Open;
-        *self.grid.entry(*new_position).or_insert(contents) = contents;
+        let _ = self.grid.insert(*old_position, BlockType::Open);
+        let _ = self.grid.insert(*new_position, contents);
     }
 
     pub fn attempt_move(
@@ -114,50 +114,26 @@ impl Warehouse {
         is_robot: bool,
     ) -> bool {
         let next_position = match direction {
-            Direction::Up => {
-                if position.1 == 0 {
-                    None
-                } else {
-                    Some(&(position.0, position.1 - 1).into())
-                }
-            }
-            Direction::Down => {
-                if position.1 >= self.height - 1 {
-                    None
-                } else {
-                    Some(&(position.0, position.1 + 1).into())
-                }
-            }
-            Direction::Left => {
-                if position.0 == 0 {
-                    None
-                } else {
-                    Some(&(position.0 - 1, position.1).into())
-                }
-            }
-            Direction::Right => {
-                if position.0 >= self.width - 1 {
-                    None
-                } else {
-                    Some(&(position.0 + 1, position.1).into())
-                }
-            }
+            Direction::Up => position.up(Some(0)),
+            Direction::Down => position.down(Some(self.height - 2)),
+            Direction::Left => position.left(Some(0)),
+            Direction::Right => position.right(Some(self.width - 2)),
         };
         if next_position.is_none() {
             return false;
         }
         let next_position = next_position.unwrap();
-        let can_move = match self.grid.get(next_position).unwrap() {
+        let can_move = match self.grid.get(&next_position).unwrap() {
             BlockType::Open => true,
             BlockType::Wall => false,
-            BlockType::Box => self.attempt_move(next_position, direction, false),
+            BlockType::Box => self.attempt_move(&next_position, direction, false),
             _ => unreachable!("Should not be other types"),
         };
 
         if can_move {
-            self.move_unchecked(position, next_position);
+            self.move_unchecked(position, &next_position);
             if is_robot {
-                self.robot_position = *next_position;
+                self.robot_position = next_position;
             }
         }
 
@@ -353,8 +329,8 @@ mod tests {
 
     #[test]
     fn test_coordinate_summation() {
-        let mut grid: HashMap<Coord<usize>, BlockType> = HashMap::new();
-        *grid.entry((4, 1).into()).or_insert(BlockType::Box) = BlockType::Box;
+        let mut grid: LinearGrid<usize, BlockType> = LinearGrid::new(10, 2, BlockType::Open);
+        let _ = grid.insert(Coord::new(4, 1), BlockType::Box);
         let warehouse = Warehouse {
             grid,
             width: 10,
