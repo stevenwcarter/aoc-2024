@@ -104,10 +104,6 @@ impl Point {
             None => None,
         }
     }
-    // let up_left = y > 0 && x > 0 && grid.contains(&(x - 1, y - 1));
-    // let up_right = y > 0 && grid.contains(&(x + 1, y - 1));
-    // let down_left = x > 0 && grid.contains(&(x - 1, y + 1));
-    // let down_right = grid.contains(&(x + 1, y + 1));
 }
 
 // TODO: Add "one_up", etc. methods

@@ -45,9 +45,6 @@ impl State<LinearGrid<u8, SquareType>> {
             .chars()
             .collect::<Vec<_>>()
             .len();
-        // let mut grid: HashGrid<u8, SquareType> = HashGrid::new().set_min_x(0).set_min_y(0);
-        // grid = grid.set_max_x((width - 1) as u8);
-        // grid = grid.set_max_y((height - 1) as u8);
         let mut grid: LinearGrid<u8, SquareType> =
             LinearGrid::new(width, height, SquareType::Clear);
         for (y, l) in input.lines().enumerate() {
@@ -90,10 +87,10 @@ impl<T: Grid<u8, SquareType>> State<T> {
     fn next_block(&self) -> Option<Coord<u8>> {
         let current_pos = self.guard_pos;
         match self.guard_facing {
-            Direction::Up => current_pos.up(),
-            Direction::Right => current_pos.right(),
-            Direction::Down => current_pos.down(),
-            Direction::Left => current_pos.left(),
+            Direction::Up => current_pos.up(None),
+            Direction::Right => current_pos.right(None),
+            Direction::Down => current_pos.down(None),
+            Direction::Left => current_pos.left(None),
         }
     }
     fn next_block2(&mut self) -> Option<Coord<u8>> {
