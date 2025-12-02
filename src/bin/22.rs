@@ -1,8 +1,7 @@
 advent_of_code::solution!(22);
 
 use atoi_simd::parse;
-use dashmap::DashMap;
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
 
 use nohash::BuildNoHashHasher;
@@ -81,13 +80,13 @@ pub fn part_one(input: &str) -> Option<u64> {
     )
 }
 pub fn part_two(input: &str) -> Option<u32> {
-    let totals: DashMap<u32, u32> = DashMap::new();
-    input
+    // let totals: DashMap<u32, u32> = DashMap::new();
+    let totals = input
         .lines()
         .par_bridge()
         .filter_map(|l| parse::<u64>(l.as_bytes()).ok())
         .map(|n| changes(n, ITERATIONS))
-        .for_each(|iter| {
+        .fold(HashMap::<u32, u32>::new, |mut totals, iter| {
             let mut seen: HashSet<u32, BuildNoHashHasher<u32>> =
                 HashSet::with_capacity_and_hasher(2001, BuildNoHashHasher::default());
 
@@ -97,9 +96,17 @@ pub fn part_two(input: &str) -> Option<u32> {
                 .for_each(|(key, e)| {
                     *totals.entry(key).or_insert(0) += e as u32;
                 });
+
+            totals
+        })
+        .reduce(HashMap::<u32, u32>::new, |mut a, b| {
+            b.iter().for_each(|(k, v)| {
+                *a.entry(*k).or_insert(0) += v;
+            });
+            a
         });
 
-    totals.into_read_only().values().max().copied()
+    totals.values().max().copied()
 }
 
 #[cfg(test)]
