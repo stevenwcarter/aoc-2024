@@ -99,7 +99,12 @@ pub fn part_two(input: &str) -> Option<u32> {
 
             totals
         })
-        .reduce(HashMap::<u32, u32>::new, |mut a, b| {
+        .reduce(HashMap::<u32, u32>::new, |mut a, mut b| {
+            if b.len() > a.len() {
+                std::mem::swap(&mut a, &mut b);
+            }
+            a.reserve(b.len());
+
             b.iter().for_each(|(k, v)| {
                 *a.entry(*k).or_insert(0) += v;
             });
