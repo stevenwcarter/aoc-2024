@@ -50,7 +50,7 @@ fn next_iter(n: &mut u64) {
 }
 
 /// Given the secret and the number of iterations, return all the
-/// prices for all 2000 iterations as a Vec<u8>
+/// prices for all 2000 iterations as an iterator to reduce allocations
 #[inline]
 fn changes(secret: u64, iters: usize) -> impl Iterator<Item = u8> {
     let mut n = secret;
