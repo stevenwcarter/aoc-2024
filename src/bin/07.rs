@@ -4,12 +4,12 @@ use rayon::prelude::*;
 use std::collections::VecDeque;
 
 use nom::{
+    IResult,
     bytes::complete::tag,
     character::complete::{digit1, multispace0},
     combinator::map_res,
     multi::separated_list1,
     sequence::separated_pair,
-    IResult,
 };
 
 fn parse_number(input: &str) -> IResult<&str, u64> {
@@ -90,10 +90,10 @@ pub fn part_one(input: &str) -> Option<u64> {
         parse_lines(input)
             .unwrap()
             .1
-            .par_iter()
+            .into_par_iter()
             .filter_map(|(test_val, numbers)| {
-                let mut numbers = VecDeque::from(numbers.clone());
-                find_operator_order(*test_val, &mut numbers, false)
+                let mut numbers = VecDeque::from(numbers);
+                find_operator_order(test_val, &mut numbers, false)
             })
             .sum(),
     )

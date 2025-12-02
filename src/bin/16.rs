@@ -5,6 +5,7 @@ use num::Zero;
 use hashbrown::{HashMap, HashSet};
 
 use std::hash::Hash;
+use std::time::Instant;
 use std::{cmp::Reverse, collections::BinaryHeap};
 
 advent_of_code::solution!(16);

@@ -1,16 +1,20 @@
 advent_of_code::solution!(22);
 
+use atoi_simd::parse;
 use dashmap::DashMap;
 use hashbrown::HashSet;
 use itertools::Itertools;
 
+use nohash::BuildNoHashHasher;
 use rayon::prelude::*;
 
 const ITERATIONS: usize = 2000;
 
 #[cfg(not(target_env = "msvc"))]
+#[cfg(not(feature = "dhat"))]
 use jemallocator::Jemalloc;
 
+#[cfg(not(feature = "dhat"))]
 #[cfg(not(target_env = "msvc"))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
@@ -47,24 +51,17 @@ fn next_iter(n: &mut u64) {
 
 /// Given the secret and the number of iterations, return all the
 /// prices for all 2000 iterations as a Vec<u8>
-fn changes(secret: u64, iters: usize) -> Vec<u8> {
+#[inline]
+fn changes(secret: u64, iters: usize) -> impl Iterator<Item = u8> {
     let mut n = secret;
-    let mut vec: Vec<u8> = Vec::with_capacity(2001);
-    vec.push((n % 10) as u8);
-    vec.extend(
-        (0..iters)
-            .map(|_| {
-                next_iter(&mut n);
-                (n % 10) as u8
-            })
-            .collect::<Vec<u8>>(),
-    );
-    vec
+    std::iter::once((n % 10) as u8).chain((0..iters).map(move |_| {
+        next_iter(&mut n);
+        (n % 10) as u8
+    }))
 }
 
 /// Builds a key for the HashMap given the different prices. Calculate the differences,
 /// and use them to build the key. Squash them all into a u32
-#[inline]
 fn build_key(a: u8, b: u8, c: u8, d: u8, e: u8) -> u32 {
     let d1 = ((b as i8 - a as i8) + 10) as u8;
     let d2 = ((c as i8 - b as i8) + 10) as u8;
@@ -78,27 +75,27 @@ pub fn part_one(input: &str) -> Option<u64> {
     Some(
         input
             .lines()
-            .filter_map(|l| l.parse::<u64>().ok())
+            .filter_map(|l| parse::<u64>(l.as_bytes()).ok())
             .map(|n| process(n, ITERATIONS))
             .sum(),
     )
 }
-pub fn part_two(input: &str) -> Option<u64> {
-    let totals: DashMap<u32, u64> = DashMap::new();
+pub fn part_two(input: &str) -> Option<u32> {
+    let totals: DashMap<u32, u32> = DashMap::new();
     input
         .lines()
         .par_bridge()
-        .filter_map(|l| l.parse::<u64>().ok())
+        .filter_map(|l| parse::<u64>(l.as_bytes()).ok())
         .map(|n| changes(n, ITERATIONS))
         .for_each(|iter| {
-            let mut seen: HashSet<u32> = HashSet::with_capacity(2001);
+            let mut seen: HashSet<u32, BuildNoHashHasher<u32>> =
+                HashSet::with_capacity_and_hasher(2001, BuildNoHashHasher::default());
 
-            iter.iter()
-                .tuple_windows()
-                .map(|(&a, &b, &c, &d, &e)| (build_key(a, b, c, d, e), e))
+            iter.tuple_windows()
+                .map(|(a, b, c, d, e)| (build_key(a, b, c, d, e), e))
                 .filter(|(key, _)| seen.insert(*key))
                 .for_each(|(key, e)| {
-                    *totals.entry(key).or_insert(0) += e as u64;
+                    *totals.entry(key).or_insert(0) += e as u32;
                 });
         });
 
@@ -127,7 +124,10 @@ mod tests {
     }
     #[test]
     fn test_changes() {
-        assert_eq!(changes(123, 9), vec![3, 0, 6, 5, 4, 4, 6, 4, 4, 2]);
+        assert_eq!(
+            changes(123, 9).collect::<Vec<u8>>(),
+            vec![3, 0, 6, 5, 4, 4, 6, 4, 4, 2]
+        );
     }
 
     #[test]

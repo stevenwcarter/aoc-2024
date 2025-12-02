@@ -10,3 +10,6 @@ time = "run --quiet --release -- time"
 
 [env]
 AOC_YEAR = "2024"
+
+# [patch."https://github.com/stevenwcarter/aoc-mine"]
+# aoc-mine = { path = "../aoc-mine" }

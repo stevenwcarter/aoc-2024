@@ -95,7 +95,7 @@ impl Garden {
             neighbors.insert(point);
 
             self.udlr(&point).iter().for_each(|point| {
-                if self.value_at_point(point) == *ch && !*visited.get(point).unwrap_or(&false) {
+                if self.value_at_point(point) == *ch && !visited.contains_key(point) {
                     stack.push(*point);
                     visited.insert(*point, true);
                 }
@@ -112,7 +112,7 @@ impl Garden {
         for (y, row) in self.grid.iter().enumerate() {
             for (x, ch) in row.iter().enumerate() {
                 let point = Point::from((x, y));
-                if !visited.get(&point).unwrap_or(&false) {
+                if !visited.contains_key(&point) {
                     let neighbors = self.find_neighbors(&point, ch, &mut visited);
 
                     // find area
@@ -137,9 +137,12 @@ impl Garden {
     }
 
     pub fn fence_pricing(&self, is_part_2: bool) -> Option<usize> {
-        let areas = self.find_areas(is_part_2);
-
-        Some(areas.iter().map(|(a, p, _)| a * p).sum())
+        Some(
+            self.find_areas(is_part_2)
+                .iter()
+                .map(|(a, p, _)| a * p)
+                .sum(),
+        )
     }
 }
 
