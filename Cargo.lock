@@ -30,6 +30,7 @@ dependencies = [
  "hashbrown 0.15.5",
  "itertools",
  "jemallocator",
+ "memchr",
  "nohash",
  "nohash-hasher",
  "nom",
