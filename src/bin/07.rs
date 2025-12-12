@@ -1,78 +1,51 @@
 advent_of_code::solution!(7);
 
 use rayon::prelude::*;
-use std::collections::VecDeque;
 
-use nom::{
-    IResult,
-    bytes::complete::tag,
-    character::complete::{digit1, multispace0},
-    combinator::map_res,
-    multi::separated_list1,
-    sequence::separated_pair,
-};
+fn parse_lines_iter(input: &str) -> impl ParallelIterator<Item = (u64, Vec<u64>)> + '_ {
+    input.par_lines().filter_map(|line| {
+        let (test, rest) = line.split_once(": ")?;
+        let test_val = test.parse::<u64>().ok()?;
 
-fn parse_number(input: &str) -> IResult<&str, u64> {
-    map_res(digit1, str::parse)(input)
+        let numbers = rest
+            .split(' ')
+            .map(|n| n.parse::<u64>().ok())
+            .collect::<Option<Vec<_>>>()?;
+
+        Some((test_val, numbers))
+    })
 }
 
-fn parse_line(input: &str) -> IResult<&str, (u64, Vec<u64>)> {
-    separated_pair(
-        parse_number,
-        tag(": "),
-        separated_list1(tag(" "), parse_number),
-    )(input)
-}
+fn find_operator_order(test_val: u64, nums: &[u64], idx: usize, current: u64, part2: bool) -> bool {
+    if current > test_val {
+        return false;
+    }
 
-fn parse_lines(input: &str) -> IResult<&str, Vec<(u64, Vec<u64>)>> {
-    separated_list1(multispace0, parse_line)(input)
-}
+    if idx == nums.len() {
+        return current == test_val;
+    }
 
-fn find_operator_order(test_val: u64, numbers: &mut VecDeque<u64>, is_part_2: bool) -> Option<u64> {
-    if numbers.len() == 1 {
-        if *numbers.front().unwrap() == test_val {
-            return Some(test_val);
-        } else {
-            return None;
+    let next = nums[idx];
+
+    // multiply
+    if find_operator_order(test_val, nums, idx + 1, current * next, part2) {
+        return true;
+    }
+
+    // add
+    if find_operator_order(test_val, nums, idx + 1, current + next, part2) {
+        return true;
+    }
+
+    // concatenate (part 2 only)
+    if part2 {
+        let concat = concatenate(current, next);
+        if find_operator_order(test_val, nums, idx + 1, concat, part2) {
+            return true;
         }
     }
 
-    let first_number = numbers.pop_front().unwrap();
-    let second_number = numbers.pop_front().unwrap();
-
-    let check_result = |check_val: u64| {
-        if check_val == test_val && numbers.is_empty() {
-            return Some(test_val);
-        }
-        if check_val <= test_val {
-            let mut check_val_vec = numbers.clone();
-            check_val_vec.push_front(check_val);
-            let check_val_result = find_operator_order(test_val, &mut check_val_vec, is_part_2);
-            if check_val_result.is_some() {
-                return check_val_result;
-            }
-        }
-        None
-    };
-
-    let multiplied = check_result(first_number * second_number);
-    if multiplied.is_some() {
-        return multiplied;
-    }
-
-    let added = check_result(first_number + second_number);
-    if added.is_some() {
-        return added;
-    }
-
-    if is_part_2 {
-        let concatenated = check_result(concatenate(first_number, second_number));
-        if concatenated.is_some() {
-            return concatenated;
-        }
-    }
-
-    None
+    false
 }
 
 /// Counts the digits in the second number, then shifts the first number
@@ -87,28 +60,18 @@ fn concatenate(a: u64, b: u64) -> u64 {
 
 pub fn part_one(input: &str) -> Option<u64> {
     Some(
-        parse_lines(input)
-            .unwrap()
-            .1
-            .into_par_iter()
-            .filter_map(|(test_val, numbers)| {
-                let mut numbers = VecDeque::from(numbers);
-                find_operator_order(test_val, &mut numbers, false)
-            })
+        parse_lines_iter(input)
+            .filter(|(test, nums)| find_operator_order(*test, nums, 1, nums[0], false))
+            .map(|(test, _)| test)
             .sum(),
     )
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     Some(
-        parse_lines(input)
-            .unwrap()
-            .1
-            .into_par_iter()
-            .filter_map(|(test_val, numbers)| {
-                let mut numbers = VecDeque::from(numbers);
-                find_operator_order(test_val, &mut numbers, true)
-            })
+        parse_lines_iter(input)
+            .filter(|(test, nums)| find_operator_order(*test, nums, 1, nums[0], true))
+            .map(|(test, _)| test)
             .sum(),
     )
 }
